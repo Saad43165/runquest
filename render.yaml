@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: runquest-server
+    env: node
+    buildCommand: npm install
+    startCommand: npm run server
+    autoDeploy: true
