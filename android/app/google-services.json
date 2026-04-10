@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "585105623148",
+    "project_id": "runquest-app-75bc8",
+    "storage_bucket": "runquest-app-75bc8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:585105623148:android:96264dde414107e30a7049",
+        "android_client_info": {
+          "package_name": "com.runquest.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "585105623148-bisin0ki0rods2sq2hvj69f8t2tabh2h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runquest.app",
+            "certificate_hash": "3b2cef324e07fcbdd4fceee1be0fe5c661183424"
+          }
+        },
+        {
+          "client_id": "585105623148-f7d6p3ls17fmiti7iktcvl4ft25p3s9j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAqUPqdr0srngR_rG3RjJ7BLxXo6_EalQw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "585105623148-f7d6p3ls17fmiti7iktcvl4ft25p3s9j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "585105623148-899oriluas6ec1ek01hfevc94kojbmj3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.runquest.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

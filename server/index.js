@@ -3,7 +3,24 @@ const cors = require('cors');
 const { WebSocketServer } = require('ws');
 const fs = require('fs');
 const path = require('path');
-const turf = require('@turf/turf');
+let turfPolygonFn = null;
+let turfAreaFn = null;
+let turfIntersectFn = null;
+
+async function ensureTurf() {
+  if (!turfPolygonFn) {
+    const helpers = await import('@turf/helpers');
+    turfPolygonFn = helpers.polygon;
+  }
+  if (!turfAreaFn) {
+    const mod = await import('@turf/area');
+    turfAreaFn = mod.default;
+  }
+  if (!turfIntersectFn) {
+    const mod = await import('@turf/intersect');
+    turfIntersectFn = mod.default;
+  }
+}
 
 const app = express();
 app.use(cors());
@@ -36,20 +53,21 @@ function toTurfPolygon(path) {
   if (coords.length && (coords[0][0] !== coords[coords.length - 1][0] || coords[0][1] !== coords[coords.length - 1][1])) {
     coords.push(coords[0]);
   }
-  return turf.polygon([coords]);
+  return turfPolygonFn([coords]);
 }
 
 app.get('/territories', (req, res) => {
   res.json(territories.sort((a, b) => b.createdAt - a.createdAt));
 });
 
-app.post('/territories', (req, res) => {
+app.post('/territories', async (req, res) => {
   const { name, ownerId, polygon } = req.body || {};
   if (!name || !ownerId || !Array.isArray(polygon) || polygon.length < 3) {
     return res.status(400).json({ error: 'invalid' });
   }
+  await ensureTurf();
   const perimeter = perimeterMeters(polygon);
-  const areaSq = areaMeters(polygon);
+  const areaSq = turfAreaFn(toTurfPolygon(polygon));
   const claimed = {
     id: `${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
     name,
@@ -58,16 +76,16 @@ app.post('/territories', (req, res) => {
     createdAt: Date.now(),
     polygon,
     perimeterMeters: Math.round(perimeter),
-    areaSqMeters: Math.round(areaSq)
+    areaSqMeters: Math.round(areaSq),
   };
   territories.unshift(claimed);
   const turfA = toTurfPolygon(polygon);
   const conquered = [];
   territories = territories.map((t) => {
-    if (t.id === claimed.id) return t;
-    const inter = turf.intersect(turfA, toTurfPolygon(t.polygon));
-    if (!inter) return t;
-    const interArea = turf.area(inter);
+    if (t.id === claimed.id) { return t; }
+    const inter = turfIntersectFn(turfA, toTurfPolygon(t.polygon));
+    if (!inter) { return t; }
+    const interArea = turfAreaFn(inter);
     const ratio = interArea / (t.areaSqMeters || 1);
     if (ratio >= 0.5) {
       const next = { ...t, ownerId, color: colorFromId(ownerId) };
@@ -85,8 +103,8 @@ app.delete('/territories/:id', (req, res) => {
   const { id } = req.params;
   const { ownerId } = req.query;
   const t = territories.find((x) => x.id === id);
-  if (!t) return res.status(404).json({ error: 'not_found' });
-  if (!ownerId || t.ownerId !== ownerId) return res.status(403).json({ error: 'forbidden' });
+  if (!t) { return res.status(404).json({ error: 'not_found' }); }
+  if (!ownerId || t.ownerId !== ownerId) { return res.status(403).json({ error: 'forbidden' }); }
   territories = territories.filter((x) => x.id !== id);
   save();
   broadcast({ type: 'snapshot', territories });
@@ -107,14 +125,12 @@ function perimeterMeters(path) {
     return R * c;
   }
   let sum = 0;
-  for (let i = 1; i < path.length; i++) sum += hav(path[i - 1], path[i]);
+  for (let i = 1; i < path.length; i++) {sum += hav(path[i - 1], path[i]);}
   sum += hav(path[path.length - 1], path[0]);
   return sum;
 }
 
-function areaMeters(path) {
-  return turf.area(toTurfPolygon(path));
-}
+// areaMeters helper is computed via turfAreaFn after ensureTurf has been called in route handlers
 
 const PORT = process.env.PORT || 4000;
 const server = app.listen(PORT, () => {

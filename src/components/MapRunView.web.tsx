@@ -1,44 +1,178 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { LatLng } from '../types';
-import { MapContainer, TileLayer, Polyline as LeafPolyline, Polygon as LeafPolygon, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, Polygon, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix default icon paths (webpack/vite)
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl:       'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl:     'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 type Props = {
   region: { latitude: number; longitude: number } | null;
   path: LatLng[];
   polygons: { points: LatLng[]; color: string }[];
+  showPolygons?: boolean;
+  showPath?: boolean;
+  tileStyle?: 'default' | 'dark' | '3d';
+  accuracyMeters?: number | null;
+  headingDeg?: number | null;
 };
 
-function Recenter({ region }: { region: Props['region'] }) {
+// Tile sources — '3d' uses free Esri satellite imagery (no token needed)
+const TILES = {
+  default: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark:    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  '3d':    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+};
+
+// ─── Recenter helper ──────────────────────────────────────────────────────────
+function Recenter({ region, tileStyle }: { region: Props['region']; tileStyle: Props['tileStyle'] }) {
   const map = useMap();
   useEffect(() => {
-    if (region) {
-      map.setView([region.latitude, region.longitude], map.getZoom());
-    }
-  }, [region, map]);
+    if (!region) return;
+    const zoom = tileStyle === '3d' ? 17 : 15;
+    map.setView([region.latitude, region.longitude], map.getZoom() || zoom);
+  }, [region, map, tileStyle]);
   return null;
 }
 
-export default function MapRunView({ region, path, polygons }: Props) {
-  const center = region ? [region.latitude, region.longitude] : [0, 0];
-  const polylinePoints = path.map((p) => [p.latitude, p.longitude]) as [number, number][];
-  const containerStyle = { flex: 1, height: '100%', width: '100%' };
+// ─── Person / direction marker ────────────────────────────────────────────────
+function UserMarker({ position, heading }: { position: [number, number] | null; heading: number | null }) {
+  const map = useMap();
+  const h   = heading ?? 0;
+
+  const icon = useMemo(() => L.divIcon({
+    className: '',
+    html: `
+      <div style="position:relative;width:48px;height:64px;">
+        <svg width="48" height="64" viewBox="0 0 48 64" style="overflow:visible;" xmlns="http://www.w3.org/2000/svg">
+          <!-- Direction chevron — rotates with heading -->
+          <g transform="rotate(${h},24,32)">
+            <path d="M24 4 L34 18 L24 13 L14 18 Z" fill="#00FF87" opacity="0.95"/>
+          </g>
+          <!-- Pulse ring (CSS animation via SVG animate) -->
+          <circle cx="24" cy="38" r="10" fill="#00FF87" opacity="0.2">
+            <animate attributeName="r"       values="10;20;10" dur="1.6s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="0.25;0;0.25" dur="1.6s" repeatCount="indefinite"/>
+          </circle>
+          <!-- Ground shadow -->
+          <ellipse cx="24" cy="58" rx="7" ry="3" fill="rgba(0,0,0,0.22)"/>
+          <!-- Legs -->
+          <path d="M20 46 L17 58 M28 46 L31 58"
+                stroke="#141820" stroke-width="3" stroke-linecap="round"/>
+          <!-- Torso -->
+          <path d="M18 34 L30 34 L28 46 L20 46 Z" fill="#141820"/>
+          <!-- Arms -->
+          <path d="M18 36 L10 42 M30 36 L38 42"
+                stroke="#141820" stroke-width="3" stroke-linecap="round"/>
+          <!-- Head -->
+          <circle cx="24" cy="27" r="7" fill="#FFDBB5"/>
+          <!-- GPS centre dot -->
+          <circle cx="24" cy="38" r="3.5" fill="#00FF87"/>
+        </svg>
+      </div>
+    `,
+    iconSize:   [48, 64],
+    iconAnchor: [24, 48],
+  }), [h]);
+
+  useEffect(() => {
+    if (!position) return;
+    const marker = L.marker(position, { icon, zIndexOffset: 1000 }).addTo(map);
+    return () => { marker.remove(); };
+  }, [position, icon, map]);
+
+  return null;
+}
+
+// ─── Start flag marker ────────────────────────────────────────────────────────
+function StartMarker({ position }: { position: [number, number] | null }) {
+  const map  = useMap();
+  const icon = useMemo(() => L.divIcon({
+    className: '',
+    html: `
+      <div style="
+        width:36px;height:36px;
+        background:#141820;border:3px solid #00ff87;
+        border-radius:999px;
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 3px 8px rgba(0,0,0,0.5);
+        transform:translate(-50%,-50%);
+      ">
+        <span style="font-size:18px;">🏁</span>
+      </div>
+    `,
+    iconSize:   [36, 36],
+    iconAnchor: [18, 18],
+  }), []);
+
+  useEffect(() => {
+    if (!position) return;
+    const marker = L.marker(position, { icon }).addTo(map);
+    return () => { marker.remove(); };
+  }, [position, icon, map]);
+
+  return null;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+export default function MapRunView({
+  region,
+  path,
+  polygons,
+  showPolygons = true,
+  showPath     = true,
+  tileStyle    = 'dark',
+  accuracyMeters,
+  headingDeg,
+}: Props) {
+  if (!region) {
+    return (
+      <div style={{ flex: 1, background: '#0d1117', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8a95a3' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 48 }}>📍</div>
+          <div style={{ marginTop: 12 }}>Waiting for location…</div>
+        </div>
+      </div>
+    );
+  }
+
+  const center: [number, number] = [region.latitude, region.longitude];
+  const zoom                     = tileStyle === '3d' ? 17 : 15;
+
   return (
-    <div style={containerStyle}>
-      <MapContainer {...({ center, zoom: 15, style: containerStyle } as any)}>
-        <Recenter region={region} />
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {polylinePoints.length > 0 && (
+    <div style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
+        <TileLayer url={TILES[tileStyle ?? 'dark']} maxZoom={19} />
+
+        <Recenter region={region} tileStyle={tileStyle} />
+        <UserMarker position={center} heading={headingDeg ?? null} />
+
+        {showPath && path.length > 0 && (
           <>
-            <Marker position={polylinePoints[0] as any} />
-            <LeafPolyline positions={polylinePoints as any} pathOptions={{ color: '#00D1FF', weight: 4 }} />
+            <StartMarker position={[path[0].latitude, path[0].longitude]} />
+            {/* Shadow stroke for depth */}
+            <Polyline
+              positions={path.map(p => [p.latitude, p.longitude])}
+              pathOptions={{ color: '#00000060', weight: 8, lineCap: 'round', lineJoin: 'round' }}
+            />
+            <Polyline
+              positions={path.map(p => [p.latitude, p.longitude])}
+              pathOptions={{ color: '#00FF87', weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' }}
+            />
           </>
         )}
-        {polygons.map((p, idx) => (
-          <LeafPolygon
-            key={idx}
-            positions={p.points.map((x) => [x.latitude, x.longitude]) as any}
-            pathOptions={{ color: p.color, weight: 2, fillColor: p.color, fillOpacity: 0.25 }}
+
+        {showPolygons && polygons.map((p, i) => (
+          <Polygon
+            key={i}
+            positions={p.points.map(pt => [pt.latitude, pt.longitude])}
+            pathOptions={{ color: p.color, weight: 2.5, fillColor: p.color, fillOpacity: 0.22 }}
           />
         ))}
       </MapContainer>

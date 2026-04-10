@@ -1,0 +1,714 @@
+
+C:\Users\PC\Documents\trae_projects\world_map\App.tsx
+   56:23  warning  Do not define components during render. React will see a new component type on every render and destroy the entire subtreeΓÇÖs DOM nodes and state (https://reactjs.org/docs/reconciliation.html#elements-of-different-types). Instead, move this component definition out of the parent component ΓÇ£AppContentΓÇ¥ and pass data as props. If you want to allow component creation in props, set allowAsProps option to true  react/no-unstable-nested-components
+   87:32  warning  Expected { after 'if' condition                                                                                                                                                                                                                                                                                                                                                                                          curly
+  102:2   warning  Newline required at end of file but not found                                                                                                                                                                                                                                                                                                                                                                            eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\server\index.js
+   51:24  warning  'path' is already declared in the upper scope on line 5 column 7  no-shadow
+   79:37  warning  Missing trailing comma                                            comma-dangle
+  114:26  warning  'path' is already declared in the upper scope on line 5 column 7  no-shadow
+  128:41  warning  Expected { after 'for' condition                                  curly
+
+C:\Users\PC\Documents\trae_projects\world_map\src\components\MapRunView.native.tsx
+   59:9   warning  Inline style: { borderRadius: 999 }            react-native/no-inline-styles
+  116:10  error    'Text' is not defined                          react/jsx-no-undef
+  116:22  warning  Inline style: { marginTop: 12, fontSize: 16 }  react-native/no-inline-styles
+  299:33  warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\components\MapRunView.tsx
+  13:2  warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\components\MapRunView.web.tsx
+   92:20  warning  Expected { after 'if' condition                                                                                                                  curly
+  126:20  warning  Expected { after 'if' condition                                                                                                                  curly
+  144:19  warning  Inline style: {
+  flex: 1,
+  background: '#0d1117',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: '#8a95a3'
+}  react-native/no-inline-styles
+  145:21  warning  Inline style: { textAlign: 'center' }                                                                                                            react-native/no-inline-styles
+  146:23  warning  Inline style: { fontSize: 48 }                                                                                                                   react-native/no-inline-styles
+  147:23  warning  Inline style: { marginTop: 12 }                                                                                                                  react-native/no-inline-styles
+  157:17  warning  Inline style: { height: '100%', width: '100%' }                                                                                                  react-native/no-inline-styles
+  158:54  warning  Inline style: { height: '100%', width: '100%' }                                                                                                  react-native/no-inline-styles
+  186:2   warning  Newline required at end of file but not found                                                                                                    eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\config\user.ts
+  28:2  warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\hooks\useRunTracker.ts
+  139:47  warning  Expected { after 'if' condition                curly
+  142:23  warning  Expected { after 'if' condition                curly
+  173:40  warning  Expected { after 'if' condition                curly
+  235:40  warning  Expected { after 'if' condition                curly
+  243:39  warning  Expected { after 'if' condition                curly
+  366:2   warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\AchievementsScreen.tsx
+   29:29  warning  Expected { after 'if' condition                                                                                                                                      curly
+   69:9   warning  Inline style: { borderRadius: 16, borderWidth: 1, padding: 14, position: 'relative' }                                                                                react-native/no-inline-styles
+   76:11  warning  Inline style: {
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  borderWidth: 1,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 10
+}            react-native/no-inline-styles
+   82:20  warning  Inline style: { fontSize: 13, fontWeight: '800', marginBottom: 4 }                                                                                                   react-native/no-inline-styles
+   85:20  warning  Inline style: { fontSize: 11, marginBottom: 10, lineHeight: 15 }                                                                                                     react-native/no-inline-styles
+   88:20  warning  Inline style: { height: 4, borderRadius: 2, marginBottom: 6, overflow: 'hidden' }                                                                                    react-native/no-inline-styles
+   89:22  warning  Inline style: { height: '100%', borderRadius: 2 }                                                                                                                    react-native/no-inline-styles
+   91:20  warning  Inline style: { fontSize: 10, fontWeight: '700' }                                                                                                                    react-native/no-inline-styles
+   93:32  warning  Inline style: { position: 'absolute', top: 10, right: 10 }                                                                                                           react-native/no-inline-styles
+  122:18  warning  Inline style: { flex: 1 }                                                                                                                                            react-native/no-inline-styles
+  127:11  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingTop: 56,
+  paddingHorizontal: 20,
+  paddingBottom: 16
+}  react-native/no-inline-styles
+  132:24  warning  Inline style: { fontSize: 28, fontWeight: '900', letterSpacing: -0.8 }                                                                                               react-native/no-inline-styles
+  133:24  warning  Inline style: { fontSize: 13, marginTop: 4 }                                                                                                                         react-native/no-inline-styles
+  135:22  warning  Inline style: {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  borderWidth: 3,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                                react-native/no-inline-styles
+  136:24  warning  Inline style: { fontSize: 16, fontWeight: '900' }                                                                                                                    react-native/no-inline-styles
+  137:24  warning  Inline style: { fontSize: 8, fontWeight: '800', letterSpacing: 1 }                                                                                                   react-native/no-inline-styles
+  141:20  warning  Inline style: {
+  flexDirection: 'row',
+  gap: 16,
+  paddingHorizontal: 20,
+  paddingBottom: 16
+}                                                                    react-native/no-inline-styles
+  143:32  warning  Inline style: { flexDirection: 'row', alignItems: 'center', gap: 6 }                                                                                                 react-native/no-inline-styles
+  144:26  warning  Inline style: { width: 8, height: 8, borderRadius: 4 }                                                                                                               react-native/no-inline-styles
+  145:26  warning  Inline style: { fontSize: 11, fontWeight: '700' }                                                                                                                    react-native/no-inline-styles
+  154:29  warning  Inline style: { gap: 12, marginBottom: 12 }                                                                                                                          react-native/no-inline-styles
+  156:32  warning  Inline style: { paddingHorizontal: 20, paddingBottom: 40 }                                                                                                           react-native/no-inline-styles
+  161:2   warning  Newline required at end of file but not found                                                                                                                        eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\LeaderboardScreen.tsx
+   20:18  warning  Inline style: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' }                                                                                                          react-native/no-inline-styles
+   21:20  warning  Inline style: {
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  borderWidth: 2,
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: 6
+}                             react-native/no-inline-styles
+   22:22  warning  Inline style: { fontSize: 16, fontWeight: '900' }                                                                                                                                    react-native/no-inline-styles
+   24:20  warning  Inline style: {
+  fontSize: 11,
+  fontWeight: '700',
+  marginBottom: 2,
+  textAlign: 'center'
+}                                                                                      react-native/no-inline-styles
+   27:20  warning  Inline style: { fontSize: 10, marginBottom: 4 }                                                                                                                                      react-native/no-inline-styles
+   28:20  warning  Inline style: {
+  width: '70%',
+  borderTopLeftRadius: 8,
+  borderTopRightRadius: 8,
+  borderWidth: 1,
+  borderBottomWidth: 0,
+  alignItems: 'center',
+  justifyContent: 'center'
+}  react-native/no-inline-styles
+   29:22  warning  Inline style: { fontSize: 20 }                                                                                                                                                       react-native/no-inline-styles
+   47:9   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 14,
+  borderWidth: 1,
+  padding: 14,
+  marginBottom: 8,
+  gap: 12
+}                                  react-native/no-inline-styles
+   52:20  warning  Inline style: {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  borderWidth: 1,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                                                react-native/no-inline-styles
+   53:22  warning  Inline style: { fontSize: 13, fontWeight: '900' }                                                                                                                                    react-native/no-inline-styles
+   55:20  warning  Inline style: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                                                                  react-native/no-inline-styles
+   56:22  warning  Inline style: { fontSize: 13, fontWeight: '900' }                                                                                                                                    react-native/no-inline-styles
+   58:20  warning  Inline style: { flex: 1 }                                                                                                                                                            react-native/no-inline-styles
+   59:22  warning  Inline style: { fontSize: 14, fontWeight: '700' }                                                                                                                                    react-native/no-inline-styles
+   61:32  warning  Inline style: { fontSize: 10, fontWeight: '900', letterSpacing: 1 }                                                                                                                  react-native/no-inline-styles
+   63:22  warning  Inline style: { fontSize: 11, marginTop: 2 }                                                                                                                                         react-native/no-inline-styles
+   65:20  warning  Inline style: { alignItems: 'flex-end' }                                                                                                                                             react-native/no-inline-styles
+   66:22  warning  Inline style: { fontSize: 16, fontWeight: '900' }                                                                                                                                    react-native/no-inline-styles
+   67:22  warning  Inline style: { fontSize: 9, fontWeight: '700' }                                                                                                                                     react-native/no-inline-styles
+  100:53  warning  Expected { after 'if' condition                                                                                                                                                      curly
+  108:18  warning  Inline style: { flex: 1 }                                                                                                                                                            react-native/no-inline-styles
+  113:11  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  paddingTop: 56,
+  paddingHorizontal: 20,
+  paddingBottom: 8
+}                   react-native/no-inline-styles
+  118:24  warning  Inline style: { fontSize: 28, fontWeight: '900', letterSpacing: -0.8 }                                                                                                               react-native/no-inline-styles
+  119:24  warning  Inline style: { fontSize: 13, marginTop: 4 }                                                                                                                                         react-native/no-inline-styles
+  122:24  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 20,
+  borderWidth: 1,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  gap: 5
+}                      react-native/no-inline-styles
+  124:26  warning  Inline style: { fontWeight: '800', fontSize: 14 }                                                                                                                                    react-native/no-inline-styles
+  133:32  warning  Inline style: { paddingHorizontal: 20, paddingBottom: 40 }                                                                                                                           react-native/no-inline-styles
+  136:26  warning  Inline style: { alignItems: 'center', paddingVertical: 60 }                                                                                                                          react-native/no-inline-styles
+  138:28  warning  Inline style: { fontSize: 18, fontWeight: '800', marginTop: 16 }                                                                                                                     react-native/no-inline-styles
+  139:28  warning  Inline style: { fontSize: 13, marginTop: 6 }                                                                                                                                         react-native/no-inline-styles
+  146:28  warning  Inline style: { marginBottom: 8 }                                                                                                                                                    react-native/no-inline-styles
+  147:30  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'flex-end',
+  justifyContent: 'center',
+  gap: 8,
+  paddingTop: 20,
+  paddingHorizontal: 20
+}                                  react-native/no-inline-styles
+  152:30  warning  Inline style: { height: 3, marginHorizontal: 20, borderRadius: 2 }                                                                                                                   react-native/no-inline-styles
+  156:28  warning  Inline style: { marginTop: 16, marginBottom: 8 }                                                                                                                                     react-native/no-inline-styles
+  157:30  warning  Inline style: { fontSize: 10, fontWeight: '800', letterSpacing: 2.5 }                                                                                                                react-native/no-inline-styles
+  166:2   warning  Newline required at end of file but not found                                                                                                                                        eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\OnboardingScreen.tsx
+   63:18  warning  Inline style: { flex: 1, alignItems: 'center' }                                                                                                        react-native/no-inline-styles
+   66:20  warning  Inline style: { position: 'absolute', borderWidth: 1, alignSelf: 'center' }                                                                            react-native/no-inline-styles
+   67:20  warning  Inline style: { position: 'absolute', borderWidth: 1, alignSelf: 'center' }                                                                            react-native/no-inline-styles
+   70:34  warning  Inline style: {
+  position: 'absolute',
+  top: 56,
+  right: 24,
+  paddingHorizontal: 16,
+  paddingVertical: 8,
+  borderRadius: 20,
+  borderWidth: 1
+}  react-native/no-inline-styles
+   71:24  warning  Inline style: { fontSize: 13, fontWeight: '700' }                                                                                                      react-native/no-inline-styles
+   75:20  warning  Inline style: { marginBottom: 40, alignItems: 'center', justifyContent: 'center' }                                                                     react-native/no-inline-styles
+   76:32  warning  Inline style: {
+  width: 160,
+  height: 160,
+  borderRadius: 80,
+  borderWidth: 1.5,
+  alignItems: 'center',
+  justifyContent: 'center'
+}              react-native/no-inline-styles
+   77:76  warning  Inline style: {
+  width: 130,
+  height: 130,
+  borderRadius: 65,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                                  react-native/no-inline-styles
+   83:30  warning  Inline style: { alignItems: 'center', paddingHorizontal: 32 }                                                                                          react-native/no-inline-styles
+   84:22  warning  Inline style: { fontSize: 11, fontWeight: '800', letterSpacing: 3, marginBottom: 10 }                                                                  react-native/no-inline-styles
+   85:22  warning  Inline style: {
+  fontSize: 32,
+  fontWeight: '900',
+  letterSpacing: -0.8,
+  textAlign: 'center',
+  marginBottom: 16
+}                                react-native/no-inline-styles
+   86:22  warning  Inline style: { fontSize: 15, textAlign: 'center', lineHeight: 24 }                                                                                    react-native/no-inline-styles
+   89:20  warning  Inline style: { flexDirection: 'row', gap: 6, marginTop: 40 }                                                                                          react-native/no-inline-styles
+   94:15  warning  Inline style: { height: 8, borderRadius: 4 }                                                                                                           react-native/no-inline-styles
+  104:20  warning  Inline style: { position: 'absolute', bottom: 52, left: 32, right: 32 }                                                                                react-native/no-inline-styles
+  106:36  warning  Inline style: { borderRadius: 16, overflow: 'hidden' }                                                                                                 react-native/no-inline-styles
+  107:66  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 18,
+  gap: 10
+}                         react-native/no-inline-styles
+  109:28  warning  Inline style: { fontSize: 16, fontWeight: '900', letterSpacing: 1.5 }                                                                                  react-native/no-inline-styles
+  113:36  warning  Inline style: { borderRadius: 16, borderWidth: 1 }                                                                                                     react-native/no-inline-styles
+  114:26  warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 18,
+  gap: 10
+}                         react-native/no-inline-styles
+  115:28  warning  Inline style: { fontSize: 15, fontWeight: '900', letterSpacing: 1.5 }                                                                                  react-native/no-inline-styles
+  123:2   warning  Newline required at end of file but not found                                                                                                          eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\ProfileScreen.tsx
+   19:28   warning  Inline style: { flex: 1, alignItems: 'center' }                                                                                                      react-native/no-inline-styles
+   20:20   warning  Inline style: { fontSize: 28, fontWeight: '900', letterSpacing: -1 }                                                                                 react-native/no-inline-styles
+   21:20   warning  Inline style: { fontSize: 10, fontWeight: '700', letterSpacing: 2, marginTop: 2 }                                                                    react-native/no-inline-styles
+   29:19   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderWidth: 1,
+  borderRadius: 12,
+  padding: 12,
+  marginBottom: 8
+}             react-native/no-inline-styles
+   30:119  warning  Inline style: { marginRight: 6 }                                                                                                                     react-native/no-inline-styles
+   31:20   warning  Inline style: { flex: 1 }                                                                                                                            react-native/no-inline-styles
+   32:22   warning  Inline style: { fontSize: 13, fontWeight: '700' }                                                                                                    react-native/no-inline-styles
+   33:22   warning  Inline style: { fontSize: 11, marginTop: 2 }                                                                                                         react-native/no-inline-styles
+   91:18   warning  Inline style: { flex: 1 }                                                                                                                            react-native/no-inline-styles
+   94:79   warning  Inline style: { paddingBottom: 40 }                                                                                                                  react-native/no-inline-styles
+   97:13   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 24,
+  paddingTop: 56
+}                                                    react-native/no-inline-styles
+  101:34   warning  Inline style: { width: 72, height: 72, borderRadius: 36, padding: 2 }                                                                                react-native/no-inline-styles
+  102:66   warning  Inline style: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 36,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                          react-native/no-inline-styles
+  103:28   warning  Inline style: { fontSize: 22, fontWeight: '900' }                                                                                                    react-native/no-inline-styles
+  107:24   warning  Inline style: { flex: 1, marginLeft: 16 }                                                                                                            react-native/no-inline-styles
+  109:28   warning  Inline style: { flexDirection: 'row', alignItems: 'center', gap: 8 }                                                                                 react-native/no-inline-styles
+  113:26   warning  Inline style: {
+  flex: 1,
+  fontSize: 20,
+  fontWeight: '700',
+  borderBottomWidth: 1,
+  paddingVertical: 4
+}                                       react-native/no-inline-styles
+  117:42   warning  Inline style: { borderRadius: 8, padding: 8 }                                                                                                        react-native/no-inline-styles
+  122:40   warning  Inline style: { flexDirection: 'row', alignItems: 'center' }                                                                                         react-native/no-inline-styles
+  123:30   warning  Inline style: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 }                                                                               react-native/no-inline-styles
+  124:73   warning  Inline style: { marginLeft: 8, marginTop: 3 }                                                                                                        react-native/no-inline-styles
+  127:36   warning  Inline style: { fontSize: 12, marginTop: 4 }                                                                                                         react-native/no-inline-styles
+  128:26   warning  Inline style: { fontSize: 11, fontWeight: '700', letterSpacing: 2, marginTop: 4 }                                                                    react-native/no-inline-styles
+  132:22   warning  Inline style: {
+  flexDirection: 'row',
+  marginHorizontal: 20,
+  borderRadius: 16,
+  borderWidth: 1,
+  padding: 20,
+  marginBottom: 8
+}             react-native/no-inline-styles
+  134:24   warning  Inline style: { width: 1, marginHorizontal: 8 }                                                                                                      react-native/no-inline-styles
+  136:24   warning  Inline style: { width: 1, marginHorizontal: 8 }                                                                                                      react-native/no-inline-styles
+  140:22   warning  Inline style: { marginHorizontal: 20, marginTop: 20 }                                                                                                react-native/no-inline-styles
+  141:24   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 12,
+  gap: 8
+}                                                       react-native/no-inline-styles
+  143:26   warning  Inline style: { fontSize: 11, fontWeight: '800', letterSpacing: 2.5 }                                                                                react-native/no-inline-styles
+  151:22   warning  Inline style: { marginHorizontal: 20, marginTop: 20 }                                                                                                react-native/no-inline-styles
+  152:24   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 12,
+  gap: 8
+}                                                       react-native/no-inline-styles
+  154:26   warning  Inline style: { fontSize: 11, fontWeight: '800', letterSpacing: 2.5 }                                                                                react-native/no-inline-styles
+  157:26   warning  Inline style: { alignItems: 'center', padding: 32, borderRadius: 16, borderWidth: 1 }                                                                react-native/no-inline-styles
+  159:28   warning  Inline style: { marginTop: 12, fontSize: 14 }                                                                                                        react-native/no-inline-styles
+  163:42   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 12,
+  borderWidth: 1,
+  padding: 14,
+  marginBottom: 8,
+  gap: 12
+}  react-native/no-inline-styles
+  164:30   warning  Inline style: {
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                                  react-native/no-inline-styles
+  165:32   warning  Inline style: { fontSize: 11, fontWeight: '800' }                                                                                                    react-native/no-inline-styles
+  167:30   warning  Inline style: { flex: 1 }                                                                                                                            react-native/no-inline-styles
+  168:32   warning  Inline style: { fontSize: 13, fontWeight: '700' }                                                                                                    react-native/no-inline-styles
+  169:32   warning  Inline style: { fontSize: 12, marginTop: 2 }                                                                                                         react-native/no-inline-styles
+  171:42   warning  Inline style: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  borderWidth: 1,
+  alignItems: 'center',
+  justifyContent: 'center'
+}                react-native/no-inline-styles
+  179:22   warning  Inline style: {
+  fontSize: 11,
+  textAlign: 'center',
+  marginTop: 24,
+  letterSpacing: 0.5
+}                                                       react-native/no-inline-styles
+  183:2    warning  Newline required at end of file but not found                                                                                                        eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\RunScreen.tsx
+   30:18   warning  Inline style: { flex: 1, alignItems: 'center', paddingVertical: 8 }                                                                                                                                                                                          react-native/no-inline-styles
+   31:69   warning  Inline style: { marginBottom: 2 }                                                                                                                                                                                                                            react-native/no-inline-styles
+   32:20   warning  Inline style: { fontSize: 15, fontWeight: '800', letterSpacing: -0.3 }                                                                                                                                                                                       react-native/no-inline-styles
+   33:20   warning  Inline style: { fontSize: 9, fontWeight: '700', letterSpacing: 1.5, marginTop: 1 }                                                                                                                                                                           react-native/no-inline-styles
+   49:9    warning  Inline style: {
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 20,
+  borderWidth: 1
+}                                                                                                                                                        react-native/no-inline-styles
+   52:64   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+   58:11   warning  Inline style: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 }                                                                                                                                                                                        react-native/no-inline-styles
+   59:58   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+   98:91   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  105:91   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  117:30   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  135:24   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  172:19   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  175:16   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  207:20   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  213:37   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  224:106  warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  257:1    warning  Trailing spaces not allowed                                                                                                                                                                                                                                  no-trailing-spaces
+  263:1    warning  Trailing spaces not allowed                                                                                                                                                                                                                                  no-trailing-spaces
+  271:43   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  307:18   warning  Inline style: { flex: 1 }                                                                                                                                                                                                                                    react-native/no-inline-styles
+  309:20   warning  Inline style: { position: 'relative' }                                                                                                                                                                                                                       react-native/no-inline-styles
+  323:18   warning  Inline style: {
+  position: 'absolute',
+  top: 52,
+  left: 16,
+  right: 16,
+  flexDirection: 'row',
+  justifyContent: 'space-between'
+}                                                                                                                      react-native/no-inline-styles
+  329:44   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  333:20   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 20,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  gap: 4,
+  borderWidth: 1
+}                                                                                              react-native/no-inline-styles
+  342:36   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  347:22   warning  Inline style: { fontSize: 12, fontWeight: '600', maxWidth: 200 }                                                                                                                                                                                             react-native/no-inline-styles
+  351:30   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  361:22   warning  Inline style: {
+  borderRadius: 20,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderWidth: 1
+}                                                                                                                                                        react-native/no-inline-styles
+  367:38   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  370:28   warning  Inline style: { fontSize: 12, fontWeight: '700' }                                                                                                                                                                                                            react-native/no-inline-styles
+  381:18   warning  Inline style: {
+  position: 'absolute',
+  top: 52,
+  alignSelf: 'center',
+  left: '50%',
+  marginLeft: -40,
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 20,
+  borderWidth: 1,
+  paddingHorizontal: 12,
+  paddingVertical: 5,
+  gap: 6
+}  react-native/no-inline-styles
+  395:47   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  400:22   warning  Inline style: { width: 7, height: 7, borderRadius: 4 }                                                                                                                                                                                                       react-native/no-inline-styles
+  405:50   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  410:20   warning  Inline style: { fontSize: 11, fontWeight: '800', letterSpacing: 2 }                                                                                                                                                                                          react-native/no-inline-styles
+  414:32   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  423:18   warning  Inline style: {
+  position: 'absolute',
+  right: 16,
+  bottom: 16,
+  borderRadius: 28,
+  width: 44,
+  height: 44,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderWidth: 1
+}                                                                     react-native/no-inline-styles
+  434:34   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  445:11   warning  Inline style: {
+  flex: 1,
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
+  padding: 16,
+  borderTopWidth: 1
+}                                                                                                                                       react-native/no-inline-styles
+  452:34   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  460:39   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  461:19   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  462:16   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  463:14   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  464:12   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  469:18   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 12
+}                                                                                                                                      react-native/no-inline-styles
+  473:29   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  477:20   warning  Inline style: { fontSize: 36, fontWeight: '900', letterSpacing: -1 }                                                                                                                                                                                         react-native/no-inline-styles
+  482:51   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  489:20   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  borderRadius: 20,
+  paddingHorizontal: 10,
+  paddingVertical: 5,
+  gap: 5,
+  borderWidth: 1
+}                                                                                              react-native/no-inline-styles
+  498:36   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  507:22   warning  Inline style: { fontSize: 11, fontWeight: '700' }                                                                                                                                                                                                            react-native/no-inline-styles
+  510:34   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  520:18   warning  Inline style: {
+  flexDirection: 'row',
+  borderRadius: 14,
+  borderWidth: 1,
+  marginBottom: 10
+}                                                                                                                                                           react-native/no-inline-styles
+  526:29   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  548:22   warning  Inline style: { flexDirection: 'row', gap: 8, marginBottom: 12 }                                                                                                                                                                                             react-native/no-inline-styles
+  567:22   warning  Inline style: { flex: 1, justifyContent: 'flex-end' }                                                                                                                                                                                                        react-native/no-inline-styles
+  570:22   warning  Inline style: { borderRadius: 14, overflow: 'hidden' }                                                                                                                                                                                                       react-native/no-inline-styles
+  572:48   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  578:24   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 14,
+  gap: 8
+}                                                                                                                                react-native/no-inline-styles
+  583:25   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  590:26   warning  Inline style: { fontSize: 14, fontWeight: '900', letterSpacing: 1.5 }                                                                                                                                                                                        react-native/no-inline-styles
+  594:39   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  604:26   warning  Inline style: { flexDirection: 'row', gap: 8 }                                                                                                                                                                                                               react-native/no-inline-styles
+  606:24   warning  Inline style: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 14,
+  borderWidth: 1,
+  paddingVertical: 14,
+  gap: 6
+}                                                                               react-native/no-inline-styles
+  616:25   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  619:50   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  625:26   warning  Inline style: { fontSize: 13, fontWeight: '800', letterSpacing: 1 }                                                                                                                                                                                          react-native/no-inline-styles
+  629:37   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  637:24   warning  Inline style: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 14,
+  borderWidth: 1,
+  paddingVertical: 14,
+  gap: 6
+}                                                                               react-native/no-inline-styles
+  647:25   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  650:50   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  656:26   warning  Inline style: { fontSize: 13, fontWeight: '800', letterSpacing: 1 }                                                                                                                                                                                          react-native/no-inline-styles
+  660:37   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  670:26   warning  Inline style: { flexDirection: 'row', gap: 8 }                                                                                                                                                                                                               react-native/no-inline-styles
+  672:24   warning  Inline style: { flex: 1, borderRadius: 14, overflow: 'hidden' }                                                                                                                                                                                              react-native/no-inline-styles
+  674:50   warning  Expected { after 'if' condition                                                                                                                                                                                                                              curly
+  680:26   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 14,
+  gap: 8
+}                                                                                                                                react-native/no-inline-styles
+  685:27   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  692:28   warning  Inline style: { fontSize: 14, fontWeight: '900', letterSpacing: 1.5 }                                                                                                                                                                                        react-native/no-inline-styles
+  696:41   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  705:24   warning  Inline style: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 14,
+  borderWidth: 1,
+  paddingVertical: 14,
+  gap: 6
+}                                                                               react-native/no-inline-styles
+  715:25   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  720:26   warning  Inline style: { fontSize: 13, fontWeight: '800', letterSpacing: 1 }                                                                                                                                                                                          react-native/no-inline-styles
+  724:37   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  734:26   warning  Inline style: { flexDirection: 'row', gap: 8 }                                                                                                                                                                                                               react-native/no-inline-styles
+  736:25   warning  Inline style: { flex: 1, borderRadius: 14, overflow: 'hidden' }                                                                                                                                                                                              react-native/no-inline-styles
+  736:91   warning  Inline style: { opacity: 0.5 }                                                                                                                                                                                                                               react-native/no-inline-styles
+  742:26   warning  Inline style: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 14,
+  gap: 8
+}                                                                                                                                react-native/no-inline-styles
+  747:27   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  754:28   warning  Inline style: { fontSize: 14, fontWeight: '900', letterSpacing: 1.5 }                                                                                                                                                                                        react-native/no-inline-styles
+  758:41   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  767:24   warning  Inline style: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 14,
+  borderWidth: 1,
+  paddingVertical: 14,
+  gap: 6
+}                                                                               react-native/no-inline-styles
+  777:25   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  783:26   warning  Inline style: { fontSize: 13, fontWeight: '800', letterSpacing: 1 }                                                                                                                                                                                          react-native/no-inline-styles
+  787:37   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  795:24   warning  Inline style: {
+  width: 50,
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 14,
+  borderWidth: 1
+}                                                                                                                                      react-native/no-inline-styles
+  802:40   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  816:18   warning  Inline style: {
+  position: 'absolute',
+  bottom: 100,
+  left: 24,
+  right: 24,
+  borderRadius: 30,
+  paddingVertical: 12,
+  alignItems: 'center',
+  borderWidth: 1
+}                                                                                        react-native/no-inline-styles
+  827:35   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  831:20   warning  Inline style: { fontWeight: '800', fontSize: 15, letterSpacing: 0.5 }                                                                                                                                                                                        react-native/no-inline-styles
+  835:33   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  846:18   warning  Inline style: {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.85)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  padding: 24
+}                                                             react-native/no-inline-styles
+  855:24   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  859:20   warning  Inline style: {
+  borderRadius: 20,
+  padding: 28,
+  maxWidth: 400,
+  width: '100%',
+  borderWidth: 1,
+  alignItems: 'center'
+}                                                                                                                              react-native/no-inline-styles
+  867:35   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  871:22   warning  Inline style: { borderRadius: 99, padding: 16, marginBottom: 16 }                                                                                                                                                                                            react-native/no-inline-styles
+  875:33   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  882:22   warning  Inline style: { fontSize: 20, fontWeight: '800', marginBottom: 12 }                                                                                                                                                                                          react-native/no-inline-styles
+  886:33   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  893:22   warning  Inline style: { fontSize: 14, textAlign: 'center', marginBottom: 8 }                                                                                                                                                                                         react-native/no-inline-styles
+  897:32   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  900:32   warning  Inline style: { fontWeight: '700' }                                                                                                                                                                                                                          react-native/no-inline-styles
+  904:22   warning  Inline style: { fontSize: 14, textAlign: 'center', marginBottom: 8 }                                                                                                                                                                                         react-native/no-inline-styles
+  908:32   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  911:47   warning  Inline style: { fontWeight: '700' }                                                                                                                                                                                                                          react-native/no-inline-styles
+  915:22   warning  Inline style: { fontSize: 14, textAlign: 'center', marginBottom: 8 }                                                                                                                                                                                         react-native/no-inline-styles
+  919:32   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  926:22   warning  Inline style: {
+  marginTop: 16,
+  borderRadius: 12,
+  paddingHorizontal: 32,
+  paddingVertical: 12
+}                                                                                                                                                        react-native/no-inline-styles
+  931:36   warning  Missing trailing comma                                                                                                                                                                                                                                       comma-dangle
+  938:28   warning  Inline style: { fontWeight: '900', fontSize: 15 }                                                                                                                                                                                                            react-native/no-inline-styles
+  945:2    warning  Newline required at end of file but not found                                                                                                                                                                                                                eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\SettingsScreen.tsx
+  108:78  warning  Inline style: { marginRight: 3 }                                                                             react-native/no-inline-styles
+  136:20  warning  Inline style: { flex: 1 }                                                                                    react-native/no-inline-styles
+  146:23  warning  Inline style: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, padding: 16 }                                react-native/no-inline-styles
+  192:6   error    React Hook useEffect has a missing dependency: 'fadeAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  195:20  warning  Expected { after 'if' condition                                                                              curly
+  283:79  warning  Inline style: { paddingBottom: 56 }                                                                          react-native/no-inline-styles
+  372:46  warning  Inline style: { marginTop: 16 }                                                                              react-native/no-inline-styles
+  422:30  warning  Inline style: { flex: 1 }                                                                                    react-native/no-inline-styles
+  434:30  warning  Inline style: { flex: 1 }                                                                                    react-native/no-inline-styles
+  446:30  warning  Inline style: { flex: 1 }                                                                                    react-native/no-inline-styles
+  453:60  warning  Inline style: { marginBottom: 0 }                                                                            react-native/no-inline-styles
+  457:30  warning  Inline style: { flex: 1 }                                                                                    react-native/no-inline-styles
+  469:2   warning  Newline required at end of file but not found                                                                eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\screens\TerritoriesScreen.tsx
+   17:6   error    React Hook useEffect has a missing dependency: 'anim'. Either include it or remove the dependency array        react-hooks/exhaustive-deps
+   87:40  warning  Expected { after 'if' condition                                                                                curly
+   89:6   error    React Hook useEffect has a missing dependency: 'headerAnim'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  127:32  warning  Inline style: { paddingHorizontal: 20, paddingBottom: 40 }                                                     react-native/no-inline-styles
+  181:4   warning  Newline required at end of file but not found                                                                  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\services\geocode.ts
+  7:33  warning  Missing trailing comma  comma-dangle
+  8:8   warning  Missing trailing comma  comma-dangle
+
+C:\Users\PC\Documents\trae_projects\world_map\src\services\gpx.ts
+  60:2  warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\services\territories.ts
+  69:30  warning  Expected { after 'if' condition                curly
+  73:17  warning  Expected { after 'if' condition                curly
+  76:25  warning  Expected { after 'if' condition                curly
+  99:2   warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\services\territoriesRemote.ts
+  128:2  warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\services\weather.ts
+  30:2  warning  Newline required at end of file but not found  eol-last
+
+C:\Users\PC\Documents\trae_projects\world_map\src\utils\geometry.ts
+  76:2  warning  Newline required at end of file but not found  eol-last
+
+Γ£û 303 problems (4 errors, 299 warnings)
+  0 errors and 99 warnings potentially fixable with the `--fix` option.
+

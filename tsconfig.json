@@ -1,17 +1,14 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "target": "ES2021",
-    "lib": [
-      "ES2021",
-      "DOM"
-    ],
+    "lib": ["ES2021"],
     "jsx": "react-native",
-    "moduleResolution": "node",
-    "types": [
-      "react",
-      "react-native",
-      "react-dom"
-    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolvePackageJsonExports": false,
+    "resolvePackageJsonImports": false,
+    "types": ["react", "react-native"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
@@ -20,14 +17,19 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    }
+      "@/*": ["src/*"]
+    },
+    "allowJs": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true
   },
-  "include": [
-    "App.tsx",
-    "src"
-  ],
-  "extends": "expo/tsconfig.base"
+  "include": ["App.tsx", "src"],
+  "exclude": [
+    "node_modules",
+    "android",
+    "ios",
+    ".expo",
+    "**/*.web.ts",
+    "**/*.web.tsx"
+  ]
 }

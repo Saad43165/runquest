@@ -6,13 +6,25 @@
     "orientation": "portrait",
     "backgroundColor": "#0b1026",
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/00f7668c-8d8f-4938-a03f-8fd2e544c9ee"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "bundleIdentifier": "com.runquest.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "RunQuest needs your location to track your runs and capture new territories in the world map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RunQuest tracks your fitness path even in the background to ensure every meter of your territory is counted accurately."
+      },
       "config": {
-        "googleMapsApiKey": ""
+        "googleMapsApiKey": "AIzaSyDummyKeyReplaceWithReal"
+      },
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -21,21 +33,26 @@
       },
       "config": {
         "googleMaps": {
-          "apiKey": ""
+          "apiKey": "AIzaSyDummyKeyReplaceWithReal"
         }
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
         "FOREGROUND_SERVICE"
       ],
-      "package": "com.runquest.app"
+      "package": "com.runquest.app",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "bundler": "webpack",
       "backgroundColor": "#0b1026"
     },
-    
     "extra": {
       "serverUrl": "http://localhost:4000",
       "firebase": {
@@ -45,7 +62,14 @@
         "storageBucket": "",
         "messagingSenderId": "",
         "appId": ""
+      },
+      "eas": {
+        "projectId": "00f7668c-8d8f-4938-a03f-8fd2e544c9ee"
       }
-    }
+    },
+    "plugins": [
+      "expo-build-properties",
+      "@react-native-google-signin/google-signin"
+    ]
   }
 }

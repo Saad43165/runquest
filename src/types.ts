@@ -7,6 +7,7 @@ export type Territory = {
   id: string;
   name: string;
   ownerId: string;
+  ownerDisplayName: string | null;
   color: string;
   createdAt: number;
   polygon: LatLng[];
