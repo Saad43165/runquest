@@ -1,105 +1,40 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Animated, RefreshControl, Platform, Alert, Dimensions,
+  Animated, RefreshControl, Dimensions, TextInput, Keyboard,
 } from 'react-native';
 import { Territory } from '../types';
-import { subscribeTerritories, removeTerritoryRemote } from '../services/territoriesRemote';
 import { ensureUserId, getDisplayName } from '../config/user';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme, THEMES } from '@/utils/ThemeContext';
-import { getFriendlyErrorMessage } from '../utils/ErrorUtils';
-import { confirmAction } from '../utils/AlertUtils';
-import { BlurView } from 'expo-blur';
+import { useTheme } from '@/utils/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { useTerritories } from '../context/TerritoriesContext';
+import { OrbBackground } from '../components/OrbBackground';
+import { auth } from '../services/firebase';
+import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+
+// Modular components
+import TerritoryCard from '../components/territories/TerritoryCard';
+import TerritoryDetailModal from '../components/territories/TerritoryDetailModal';
 
 const { width } = Dimensions.get('window');
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+type FilterMode = 'all' | 'mine' | 'others';
 
-function TerritoryProCard({ item, uid, myName, index }: { item: Territory; uid: string; myName: string; index: number }) {
-  const { T } = useTheme();
-  const anim = useRef(new Animated.Value(0)).current;
-  const isMe = item.ownerId === uid;
+// ─── Stats Hero ───────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    Animated.spring(anim, { toValue: 1, delay: index * 40, useNativeDriver: true, tension: 50, friction: 9 }).start();
-  }, [anim, index]);
-
-  const initials = (isMe ? myName : (item.ownerDisplayName ?? 'Unknown Warrior')).split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-
-  return (
-    <Animated.View style={[
-      styles.card,
-      { backgroundColor: T.card, borderColor: isMe ? T.green + '50' : T.border, opacity: anim },
-      { transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }
-    ]}>
-      <View style={styles.cardHeader}>
-         <View style={[styles.ownerBadge, { backgroundColor: isMe ? T.green + '15' : T.muted }]}>
-            <Text style={[styles.ownerBadgeText, { color: isMe ? T.green : T.text }]}>
-               {isMe ? 'MY DOMAIN' : 'CONQUERED'}
-            </Text>
-         </View>
-         {isMe && (
-           <TouchableOpacity 
-             onPress={() => {
-               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-               confirmAction({
-                 title: 'Release Domain',
-                 message: 'This territory will be removed from your kingdom.',
-                 confirmText: 'Release',
-                 style: 'destructive',
-                 onConfirm: () => { removeTerritoryRemote(item.id); }
-               });
-             }}
-             style={styles.deleteBtn}
-           >
-             <Ionicons name="trash-outline" size={16} color={T.red} />
-           </TouchableOpacity>
-         )}
-      </View>
-
-      <View style={styles.cardMain}>
-         <View style={[styles.colorOrb, { backgroundColor: item.color, shadowColor: item.color }]} />
-         <View style={{ flex: 1 }}>
-            <Text style={[styles.territoryName, { color: T.white }]}>{item.name}</Text>
-            <View style={styles.statLine}>
-               <Ionicons name="expand-outline" size={10} color={T.text} />
-               <Text style={[styles.statValue, { color: T.text }]}>{Math.round(item.areaSqMeters).toLocaleString()} m²</Text>
-               <View style={styles.dotSeparator} />
-               <Ionicons name="git-commit-outline" size={10} color={T.text} />
-               <Text style={[styles.statValue, { color: T.text }]}>{Math.round(item.perimeterMeters).toLocaleString()} m</Text>
-            </View>
-         </View>
-      </View>
-
-      <View style={[styles.cardFooter, { backgroundColor: T.black + '40', borderTopColor: T.border }]}>
-         <View style={[styles.avatar, { backgroundColor: item.color + '20', borderColor: item.color + '40' }]}>
-            <Text style={[styles.avatarText, { color: item.color }]}>{initials}</Text>
-         </View>
-         <Text style={[styles.ownerLabel, { color: T.text }]}>Claimed by</Text>
-         <Text style={[styles.ownerName, { color: T.white }]} numberOfLines={1}>
-            {isMe ? 'You' : (item.ownerDisplayName ?? 'Unknown Warrior')}
-         </Text>
-      </View>
-    </Animated.View>
-  );
-}
-
-// ─── Leaderboard Item ─────────────────────────────────────────────────────────
-
-function LeaderboardItem({ rank, name, area, color, isMe }: { rank: number; name: string; area: number; color: string; isMe: boolean }) {
+function StatHero({ label, value, icon, color }: { label: string; value: string; icon: string; color: string }) {
   const { T } = useTheme();
   return (
-    <View style={[styles.lbRow, { borderBottomColor: T.border }]}>
-      <Text style={[styles.lbRank, { color: rank === 1 ? T.gold : T.text }]}>#{rank}</Text>
-      <View style={[styles.lbAvatar, { backgroundColor: color + '20', borderColor: color + '40' }]}>
-         <Text style={{ color, fontSize: 10, fontWeight: '900' }}>{name.slice(0, 1)}</Text>
+    <View style={[styles.heroCard, { backgroundColor: T.card, borderColor: T.border }]}>
+      <View style={[styles.heroIcon, { backgroundColor: color + '18' }]}>
+        <Ionicons name={icon as any} size={20} color={color} />
       </View>
-      <Text style={[styles.lbName, { color: isMe ? T.green : T.white }]} numberOfLines={1}>{name}</Text>
-      <Text style={[styles.lbArea, { color: T.text }]}>{Math.round(area).toLocaleString()} m²</Text>
+      <Text style={[styles.heroValue, { color: T.white }]}>{value}</Text>
+      <Text style={[styles.heroLabel, { color: T.text }]}>{label}</Text>
     </View>
   );
 }
@@ -109,26 +44,31 @@ function LeaderboardItem({ rank, name, area, color, isMe }: { rank: number; name
 export default function TerritoriesScreen() {
   const { T } = useTheme();
   const insets = useSafeAreaInsets();
-  const [territories, setTerritories] = useState<Territory[]>([]);
-  const [uid, setUid] = useState('');
+  const navigation = useNavigation<any>();
+  const { territories, loading } = useTerritories();
+  const { user, profile } = useAuth();
+  const [uid, setUid] = useState(auth.currentUser?.uid || '');
   const [myName, setMyName] = useState('Warrior');
+  const [myPhotoURL, setMyPhotoURL] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [filter, setFilter] = useState<FilterMode>('all');
+  const [search, setSearch] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
+  const [selectedTerritory, setSelectedTerritory] = useState<Territory | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const headerAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    initData();
-    Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-  }, []);
-
-  const initData = async () => {
+  const initData = useCallback(async () => {
     try {
-      subscribeTerritories(list => setTerritories(list));
-      setUid(await ensureUserId());
+      const firebaseUid = auth.currentUser?.uid;
+      const localUid = await ensureUserId();
+      const resolvedUid = firebaseUid || localUid;
+      setUid(resolvedUid);
       setMyName(await getDisplayName());
-    } catch (e) {
-      console.error(e);
-    }
-  };
+      setMyPhotoURL(profile?.photoURL || auth.currentUser?.photoURL || null);
+    } catch {}
+  }, [profile?.photoURL, user?.photoURL]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -137,89 +77,208 @@ export default function TerritoriesScreen() {
     setRefreshing(false);
   };
 
-  const leaderboardData = Array.from(
-    territories.reduce((acc, t) => {
-      acc.set(t.ownerId, (acc.get(t.ownerId) || 0) + (t.areaSqMeters || 0));
-      return acc;
-    }, new Map<string, number>())
-  ).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  useEffect(() => {
+    initData();
+    Animated.spring(headerAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }).start();
+  }, [headerAnim, initData]);
 
-  const myRankIdx = leaderboardData.findIndex(([id]) => id === uid);
-  const myTotalArea = territories.filter(t => t.ownerId === uid).reduce((a, t) => a + t.areaSqMeters, 0);
+  useEffect(() => {
+    if (showSearch) {
+      const t = setTimeout(() => searchInputRef.current?.focus(), 100);
+      return () => clearTimeout(t);
+    } else {
+      Keyboard.dismiss();
+      setSearch('');
+    }
+  }, [showSearch]);
+
+  useEffect(() => {
+    if (showDetail) Keyboard.dismiss();
+  }, [showDetail]);
+
+  useEffect(() => {
+    const photo = profile?.photoURL || user?.photoURL || null;
+    setMyPhotoURL(photo);
+  }, [profile, user]);
+
+  const myTerritories = territories.filter(t => t.ownerId === uid);
+  const myTotalArea = myTerritories.reduce((s, t) => s + t.areaSqMeters, 0);
+  const uniqueWarriors = new Set(territories.map(t => t.ownerId)).size;
+
+  const filtered = useMemo(() => {
+    let list = territories;
+    if (filter === 'mine') list = list.filter(t => t.ownerId === uid);
+    if (filter === 'others') list = list.filter(t => t.ownerId !== uid);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(t =>
+        t.name.toLowerCase().includes(q) ||
+        (t.ownerDisplayName ?? '').toLowerCase().includes(q) ||
+        (t.ownerUsername ?? '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [territories, filter, search, uid]);
+
+  const FILTERS: { id: FilterMode; label: string; icon: string }[] = useMemo(() => [
+    { id: 'all',    label: `All (${territories.length})`,    icon: 'globe-outline' },
+    { id: 'mine',   label: `Mine (${myTerritories.length})`, icon: 'person-outline' },
+    { id: 'others', label: 'Others',                         icon: 'people-outline' },
+  ], [territories.length, myTerritories.length]);
+
+  const renderHeader = useCallback(() => (
+    <Animated.View style={{ opacity: headerAnim }}>
+      <View style={styles.header}>
+        <View style={styles.headerTitleWrap}>
+          <Text style={[styles.title, { color: T.white }]}>Kingdoms</Text>
+          <Text style={[styles.subtitle, { color: T.text }]}>{uniqueWarriors} warriors · {territories.length} territories</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => setShowSearch(v => !v)}
+          style={[styles.iconBtn, { backgroundColor: showSearch ? T.green + '20' : T.card, borderColor: showSearch ? T.green : T.border }]}
+          accessibilityLabel={showSearch ? 'Close search' : 'Search territories'}
+          accessibilityRole="button"
+        >
+          <Ionicons name="search" size={18} color={showSearch ? T.green : T.text} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onRefresh}
+          style={[styles.iconBtn, { backgroundColor: T.card, borderColor: T.border }]}
+          accessibilityLabel="Refresh territories"
+          accessibilityRole="button"
+        >
+          <Ionicons name="sync" size={18} color={T.green} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.statsGrid}>
+        <StatHero label="MY AREA" value={myTotalArea >= 1000 ? `${(myTotalArea/1000).toFixed(1)}k` : String(Math.round(myTotalArea))} icon="flag" color={T.green} />
+        <StatHero label="GLOBAL" value={territories.length.toString()} icon="globe-outline" color={T.accent2} />
+        <StatHero label="WARRIORS" value={uniqueWarriors.toString()} icon="people-outline" color={T.gold} />
+      </View>
+
+      {myTerritories.length > 0 && (
+        <View style={[styles.myCard, { backgroundColor: T.green + '10', borderColor: T.green + '30' }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.myCardLabel, { color: T.green }]}>YOUR KINGDOM</Text>
+            <Text style={[styles.myCardTitle, { color: T.white }]}>{myName}</Text>
+            <Text style={[styles.myCardStats, { color: T.text }]}>
+              {myTerritories.length} territories · {(myTotalArea / 1000000).toFixed(4)} km²
+            </Text>
+          </View>
+          <View style={styles.myCardAreaWrap}>
+            <Text style={[styles.myCardAreaLabel, { color: T.text }]}>TOTAL AREA</Text>
+            <Text style={[styles.myCardAreaValue, { color: T.green }]}>
+              {myTotalArea >= 1000 ? `${(myTotalArea/1000).toFixed(0)}k` : Math.round(myTotalArea)}
+            </Text>
+            <Text style={[styles.myCardAreaUnit, { color: T.text }]}>m²</Text>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.filterRow}>
+        {FILTERS.map(f => (
+          <TouchableOpacity
+            key={f.id}
+            onPress={() => { setFilter(f.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            style={[styles.filterBtn, { backgroundColor: filter === f.id ? T.green + '20' : T.card, borderColor: filter === f.id ? T.green : T.border }]}
+          >
+            <Ionicons name={f.icon as any} size={13} color={filter === f.id ? T.green : T.text} />
+            <Text style={[styles.filterText, { color: filter === f.id ? T.green : T.text }]}>{f.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </Animated.View>
+  ), [headerAnim, T, territories, myTerritories, myTotalArea, myName, uniqueWarriors, filter, FILTERS, showSearch, onRefresh]);
 
   return (
     <View style={[styles.root, { backgroundColor: T.black }]}>
-      <LinearGradient colors={[T.accent2 + '08', 'transparent']} style={StyleSheet.absoluteFill} />
-      
-      <Animated.FlatList
-        data={territories}
+      <OrbBackground />
+      <LinearGradient colors={[T.accent2 + '10', 'transparent']} style={StyleSheet.absoluteFill} />
+
+      {showSearch && (
+        <View style={[styles.searchBarFixed, {
+          top: insets.top + 16,
+          backgroundColor: T.card,
+          borderColor: T.border,
+        }]}>
+          <Ionicons name="search" size={16} color={T.text} />
+          <TextInput
+            ref={searchInputRef}
+            style={[styles.searchInput, { color: T.white }]}
+            placeholder="Search territories or warriors..."
+            placeholderTextColor={T.text + '80'}
+            value={search}
+            onChangeText={setSearch}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={16} color={T.text} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      <FlatList
+        data={filtered}
         keyExtractor={item => item.id}
-        style={{ opacity: fadeAnim }}
-        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 100, paddingHorizontal: 20 }}
+        contentContainerStyle={[styles.listContent, { paddingTop: showSearch ? insets.top + 72 : insets.top + 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={T.green} />}
-        ListHeaderComponent={() => (
-          <View style={{ marginBottom: 32 }}>
-            <View style={styles.headerRow}>
-               <View>
-                  <Text style={[styles.title, { color: T.white }]}>Kingdoms</Text>
-                  <Text style={[styles.subtitle, { color: T.text }]}>THE TERRITORY REGISTRY</Text>
-               </View>
-               <TouchableOpacity onPress={onRefresh} style={[styles.syncBtn, { backgroundColor: T.card }]}>
-                  <Ionicons name="sync" size={18} color={T.green} />
-               </TouchableOpacity>
-            </View>
-
-            {/* Overall Stats */}
-            <View style={[styles.statsHero, { backgroundColor: T.card, borderColor: T.border }]}>
-               <View style={styles.heroColumn}>
-                  <Text style={[styles.heroLabel, { color: T.text }]}>GLOBAL REGIONS</Text>
-                  <Text style={[styles.heroVal, { color: T.white }]}>{territories.length}</Text>
-               </View>
-               <View style={[styles.heroDivider, { backgroundColor: T.border }]} />
-               <View style={styles.heroColumn}>
-                  <Text style={[styles.heroLabel, { color: T.text }]}>YOUR CONQUESTS</Text>
-                  <Text style={[styles.heroVal, { color: T.green }]}>{territories.filter(t => t.ownerId === uid).length}</Text>
-               </View>
-            </View>
-
-            {/* Pro Leaderboard */}
-            <Text style={[styles.sectionTitle, { color: T.text }]}>GLOBAL RANKINGS</Text>
-            <View style={[styles.lbCard, { backgroundColor: T.card, borderColor: T.border }]}>
-               {leaderboardData.length > 0 ? (
-                 leaderboardData.map(([id, area], i) => (
-                   <LeaderboardItem 
-                     key={id} 
-                     rank={i+1} 
-                     name={id === uid ? myName : (territories.find(t => t.ownerId === id)?.ownerDisplayName ?? 'Unknown Warrior')} 
-                     area={area} 
-                     color={THEMES.midnight.green} 
-                     isMe={id === uid} 
-                    />
-                 ))
-               ) : (
-                 <Text style={{ textAlign: 'center', color: T.text, padding: 20 }}>No warriors have claimed land yet.</Text>
-               )}
-               {myRankIdx === -1 && myTotalArea > 0 && (
-                 <View style={{ borderTopWidth: 1, borderTopColor: T.border, paddingTop: 8 }}>
-                    <LeaderboardItem rank={0} name="You" area={myTotalArea} color={T.green} isMe={true} />
-                 </View>
-               )}
-            </View>
-
-            <Text style={[styles.sectionTitle, { color: T.text, marginTop: 32 }]}>RECENT CONQUESTS</Text>
-          </View>
-        )}
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={() => (
-          <View style={styles.emptyWrap}>
-             <Ionicons name="at-circle-outline" size={60} color={T.border} />
-             <Text style={[styles.emptyTitle, { color: T.white }]}>Empty Realm</Text>
-             <Text style={[styles.emptySub, { color: T.text }]}>Be the first to carve a territory in this world.</Text>
+          <View style={styles.empty}>
+            <Ionicons name={search.trim() ? 'search-outline' : 'map-outline'} size={56} color={T.border} />
+            <Text style={[styles.emptyTitle, { color: T.white }]}>
+              {search.trim()
+                ? 'No results found'
+                : filter === 'mine'
+                ? 'No territories yet'
+                : 'Empty Realm'}
+            </Text>
+            <Text style={[styles.emptySub, { color: T.text }]}>
+              {search.trim()
+                ? `No territories or warriors match "${search}"`
+                : filter === 'mine'
+                ? 'Run a closed loop on the map to claim your first territory!'
+                : 'Be the first warrior to carve a territory in this world.'}
+            </Text>
+            {search.trim() && (
+              <TouchableOpacity
+                onPress={() => setSearch('')}
+                style={[styles.clearSearchBtn, { backgroundColor: T.card, borderColor: T.border }]}
+              >
+                <Text style={{ color: T.text, fontSize: 13, fontWeight: '700' }}>Clear search</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
         renderItem={({ item, index }) => (
-          <TerritoryProCard item={item} uid={uid} myName={myName} index={index} />
+          <TerritoryCard
+            item={item}
+            uid={uid}
+            myName={myName}
+            myPhotoURL={myPhotoURL}
+            index={index}
+            onOpen={() => {
+              Keyboard.dismiss();
+              setSelectedTerritory(item);
+              setShowDetail(true);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          />
         )}
+      />
+
+      <TerritoryDetailModal
+        visible={showDetail}
+        item={selectedTerritory}
+        uid={uid}
+        myName={myName}
+        myPhotoURL={myPhotoURL}
+        onClose={() => setShowDetail(false)}
+        navigation={navigation}
+        insets={insets}
       />
     </View>
   );
@@ -227,39 +286,32 @@ export default function TerritoriesScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  title: { fontSize: 38, fontWeight: '900', letterSpacing: -1 },
-  subtitle: { fontSize: 10, fontWeight: '800', letterSpacing: 2.5, marginTop: 2 },
-  syncBtn: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  statsHero: { borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 1, marginBottom: 32 },
-  heroColumn: { flex: 1, alignItems: 'center' },
-  heroLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6 },
-  heroVal: { fontSize: 24, fontWeight: '900' },
-  heroDivider: { width: 1, height: 30, marginHorizontal: 10 },
-  sectionTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 2, marginBottom: 12 },
-  lbCard: { borderRadius: 24, borderWidth: 1, overflow: 'hidden' },
-  lbRow: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  lbRank: { width: 30, fontSize: 14, fontWeight: '900' },
-  lbAvatar: { width: 22, height: 22, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  lbName: { flex: 1, fontSize: 14, fontWeight: '700' },
-  lbArea: { fontSize: 12, fontWeight: '800' },
-  card: { borderRadius: 24, borderWidth: 1, marginBottom: 16, overflow: 'hidden' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', padding: 12, paddingBottom: 0 },
-  ownerBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  ownerBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-  deleteBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-  cardMain: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 12, gap: 16 },
-  colorOrb: { width: 10, height: 40, borderRadius: 5, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 10 },
-  territoryName: { fontSize: 20, fontWeight: '900', letterSpacing: -0.5 },
-  statLine: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
-  statValue: { fontSize: 11, fontWeight: '700' },
-  dotSeparator: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#555', marginHorizontal: 4 },
-  cardFooter: { flexDirection: 'row', alignItems: 'center', padding: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  avatar: { width: 24, height: 24, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  avatarText: { fontSize: 10, fontWeight: '900' },
-  ownerLabel: { fontSize: 12, marginRight: 6 },
-  ownerName: { fontSize: 12, fontWeight: '800' },
-  emptyWrap: { alignItems: 'center', paddingVertical: 100 },
-  emptyTitle: { fontSize: 20, fontWeight: '900', marginTop: 20 },
-  emptySub: { fontSize: 13, textAlign: 'center', marginTop: 8, paddingHorizontal: 40, lineHeight: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  headerTitleWrap: { flex: 1 },
+  title: { fontSize: 32, fontWeight: '900', letterSpacing: -0.8 },
+  subtitle: { fontSize: 12, marginTop: 2, opacity: 0.7 },
+  iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  searchBarFixed: { position: 'absolute', left: 16, right: 16, zIndex: 100, flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, height: 44 },
+  searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
+  listContent: { paddingBottom: 120, paddingHorizontal: 16 },
+  statsGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  heroCard: { flex: 1, borderRadius: 18, borderWidth: 1, padding: 14, alignItems: 'center', gap: 4 },
+  heroIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  heroValue: { fontSize: 18, fontWeight: '900' },
+  heroLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 1 },
+  myCard: { borderRadius: 20, borderWidth: 1, padding: 18, flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  myCardLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  myCardTitle: { fontSize: 18, fontWeight: '900', marginTop: 4 },
+  myCardStats: { fontSize: 12, marginTop: 2 },
+  myCardAreaWrap: { alignItems: 'flex-end' },
+  myCardAreaLabel: { fontSize: 10, fontWeight: '700' },
+  myCardAreaValue: { fontSize: 26, fontWeight: '900', lineHeight: 30 },
+  myCardAreaUnit: { fontSize: 10 },
+  filterRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  filterBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, borderRadius: 14, borderWidth: 1, paddingVertical: 9 },
+  filterText: { fontSize: 11, fontWeight: '800' },
+  empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
+  emptyTitle: { fontSize: 20, fontWeight: '900', marginTop: 16 },
+  emptySub: { fontSize: 13, textAlign: 'center', marginTop: 8, lineHeight: 20 },
+  clearSearchBtn: { marginTop: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 20, borderWidth: 1 },
 });

@@ -4,7 +4,13 @@
     "slug": "runquest",
     "version": "0.1.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "backgroundColor": "#0b1026",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1026"
+    },
     "updates": {
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/00f7668c-8d8f-4938-a03f-8fd2e544c9ee"
@@ -16,11 +22,16 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.runquest.app",
       "infoPlist": {
+        "UIBackgroundModes": [
+          "audio",
+          "location",
+          "fetch"
+        ],
         "NSLocationWhenInUseUsageDescription": "RunQuest needs your location to track your runs and capture new territories in the world map.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "RunQuest tracks your fitness path even in the background to ensure every meter of your territory is counted accurately."
       },
       "config": {
-        "googleMapsApiKey": "AIzaSyDummyKeyReplaceWithReal"
+        "googleMapsApiKey": "AIzaSyAqUPqdr0srngR_rG3RjJ7BLxXo6_EalQw"
       },
       "googleServicesFile": "./GoogleService-Info.plist",
       "runtimeVersion": {
@@ -29,20 +40,22 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b1026"
       },
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDummyKeyReplaceWithReal"
+          "apiKey": "AIzaSyAqUPqdr0srngR_rG3RjJ7BLxXo6_EalQw"
         }
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "FOREGROUND_SERVICE"
+        "FOREGROUND_SERVICE_LOCATION",
+        "READ_MEDIA_AUDIO",
+        "READ_EXTERNAL_STORAGE"
       ],
       "package": "com.runquest.app",
       "versionCode": 1,
@@ -50,8 +63,10 @@
       "runtimeVersion": "1.0.0"
     },
     "web": {
-      "bundler": "webpack",
-      "backgroundColor": "#0b1026"
+      "bundler": "metro",
+      "output": "single",
+      "backgroundColor": "#0b1026",
+      "favicon": "./assets/icon.png"
     },
     "extra": {
       "serverUrl": "http://localhost:4000",
@@ -69,7 +84,17 @@
     },
     "plugins": [
       "expo-build-properties",
-      "@react-native-google-signin/google-signin"
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "RunQuest tracks your location in the background to accurately record your run path and territory.",
+          "locationAlwaysPermission": "RunQuest needs background location to keep tracking your run when the screen is off.",
+          "locationWhenInUsePermission": "RunQuest needs your location to track runs and claim territories.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-audio"
     ]
   }
 }

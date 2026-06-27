@@ -22,6 +22,7 @@ export type RunRecord = {
   perimeterMeters: number;
   areaSqMeters: number;
   points: LatLng[];
+  altitudePoints?: number[];
 };
 
 const LOCAL_KEY = 'runquest:history';
@@ -41,7 +42,12 @@ function runsCollection(userId: string) {
 async function getLocalHistory(): Promise<RunRecord[]> {
   try {
     const raw = await AsyncStorage.getItem(LOCAL_KEY);
-    return raw ? (JSON.parse(raw) as RunRecord[]) : [];
+    if (!raw) return [];
+    try {
+      return JSON.parse(raw) as RunRecord[];
+    } catch {
+      return [];
+    }
   } catch {
     return [];
   }
@@ -72,6 +78,7 @@ export async function addRun(rec: RunRecord): Promise<void> {
       ...rec,
       // Firestore can't store nested arrays of objects directly — serialize points
       points: JSON.stringify(rec.points),
+      altitudePoints: rec.altitudePoints ? JSON.stringify(rec.altitudePoints) : null,
     });
   } catch (e) {
     console.warn('Failed to sync run to Firestore:', e);
@@ -103,6 +110,9 @@ export async function getHistory(): Promise<RunRecord[]> {
             points: typeof data.points === 'string'
               ? JSON.parse(data.points)
               : (data.points ?? []),
+            altitudePoints: data.altitudePoints
+              ? (typeof data.altitudePoints === 'string' ? JSON.parse(data.altitudePoints) : data.altitudePoints)
+              : undefined,
           } as RunRecord;
         });
         // Populate local cache from cloud
@@ -115,6 +125,23 @@ export async function getHistory(): Promise<RunRecord[]> {
   }
 
   return local;
+}
+
+/**
+ * Delete a single run by ID — removes locally and from Firestore.
+ */
+export async function deleteRun(id: string): Promise<void> {
+  const list = await getLocalHistory();
+  const updated = list.filter(r => r.id !== id);
+  await setLocalHistory(updated);
+
+  const userId = uid();
+  if (!userId) return;
+  try {
+    await deleteDoc(doc(runsCollection(userId), id));
+  } catch (e) {
+    console.warn('Failed to delete run from Firestore:', e);
+  }
 }
 
 /**

@@ -46,6 +46,15 @@ export const NotificationService = {
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
       });
+      
+      // Channel for the silent, persistent "live tracking pill"
+      await Notifications.setNotificationChannelAsync('runquest-live-run', {
+        name: 'Live Run Tracking',
+        importance: Notifications.AndroidImportance.LOW, // low importance = no sound/vibration but visible
+        sound: null, // explicit no sound
+        enableVibrate: false, // explicit no vibrate
+        showBadge: false, // don't increment app badge for tracker loop
+      });
     }
 
     return true;

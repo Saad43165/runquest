@@ -1,0 +1,32 @@
+[build]
+  command = "npx expo export --platform web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
+  # Firebase config is injected via Netlify env vars (set in Netlify dashboard)
+  # EXPO_PUBLIC_FIREBASE_API_KEY
+  # EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN
+  # EXPO_PUBLIC_FIREBASE_PROJECT_ID
+  # EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET
+  # EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+  # EXPO_PUBLIC_FIREBASE_APP_ID
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://*.firebase.com wss://*.firebaseio.com https://*.firebasestorage.app https://api.dicebear.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://api.open-meteo.com https://nominatim.openstreetmap.org;"
+
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

@@ -11,6 +11,7 @@ import { useTheme } from '@/utils/ThemeContext';
 import { loginUser } from '../services/authService';
 import { getFriendlyErrorMessage } from '../utils/ErrorUtils';
 import * as Haptics from 'expo-haptics';
+import { AppLogo } from '../components/AppLogo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -83,6 +84,8 @@ export default function LoginScreen({ onGoSignUp, onGoForgot }: {
     }
   };
 
+
+
   return (
     <View style={{ flex: 1, backgroundColor: T.black }}>
       <StatusBar barStyle="light-content" />
@@ -90,18 +93,23 @@ export default function LoginScreen({ onGoSignUp, onGoForgot }: {
       <View style={[styles.orb1, { backgroundColor: T.green + '18' }]} />
       <View style={[styles.orb2, { backgroundColor: T.accent2 + '12' }]} />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo */}
-          <Animated.View style={[styles.logoWrap, { opacity: fadeAnim, transform: [{ scale: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }] }]}>
-            <LinearGradient colors={[T.green, '#00C6A0']} style={styles.logoGrad}>
-              <Ionicons name="globe" size={48} color="#000" />
-            </LinearGradient>
-            <View style={[styles.logoGlow, { borderColor: T.green + '30' }]} />
+          {/* Logo — natural rectangle, width matches "RunQuest" text */}
+          <Animated.View style={[styles.logoWrap, { opacity: fadeAnim, transform: [{ scale: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [0.7, 1] }) }] }]}>
+            <View style={{
+              borderRadius: 22,
+              overflow: 'hidden',
+              borderWidth: 2,
+              borderColor: T.green + '50',
+              backgroundColor: '#0A0C10',
+            }}>
+              <AppLogo size={90} />
+            </View>
           </Animated.View>
 
           <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', marginBottom: 48 }}>
@@ -163,7 +171,7 @@ export default function LoginScreen({ onGoSignUp, onGoForgot }: {
           {/* Login button */}
           <Animated.View style={{ transform: [{ translateY: btnAnim }] }}>
             <TouchableOpacity onPress={onLogin} disabled={loading} activeOpacity={0.85} style={styles.loginBtn}>
-              <LinearGradient colors={[T.green, '#00C6A0']} style={styles.loginGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+              <LinearGradient colors={[T.green, '#0A84FF']} style={styles.loginGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 {loading ? <ActivityIndicator color="#000" /> : (
                   <>
                     <Text style={styles.loginBtnText}>LOG IN</Text>
@@ -172,6 +180,8 @@ export default function LoginScreen({ onGoSignUp, onGoForgot }: {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+
           </Animated.View>
 
           {/* Sign up link */}
@@ -192,7 +202,8 @@ const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 28 },
   orb1: { position: 'absolute', top: -100, right: -80, width: 300, height: 300, borderRadius: 150 },
   orb2: { position: 'absolute', bottom: 100, left: -100, width: 250, height: 250, borderRadius: 125 },
-  logoWrap: { alignSelf: 'center', marginBottom: 20, position: 'relative' },
+  logoWrap: { alignSelf: 'center', marginBottom: 16, alignItems: 'center' },
+  logoImg: { width: 100, height: 100, borderRadius: 24 },
   logoGrad: { width: 100, height: 100, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
   logoGlow: { position: 'absolute', top: -8, left: -8, right: -8, bottom: -8, borderRadius: 40, borderWidth: 1.5 },
   appName: { fontSize: 36, fontWeight: '900', letterSpacing: -1 },
@@ -206,4 +217,9 @@ const styles = StyleSheet.create({
   loginGrad: { height: 62, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   loginBtnText: { color: '#000', fontWeight: '900', fontSize: 17, letterSpacing: 0.5 },
   signupRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  dividerLine: { flex: 1, height: StyleSheet.hairlineWidth },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, height: 58, borderRadius: 18, borderWidth: 1.5, marginBottom: 32 },
+  googleIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  googleBtnText: { fontSize: 16, fontWeight: '700' },
 });

@@ -79,7 +79,7 @@ export default function ForgotPasswordScreen({ onGoBack }: { onGoBack: () => voi
       <View style={[styles.orb1, { backgroundColor: T.green + '18' }]} />
       <View style={[styles.orb2, { backgroundColor: T.accent2 + '12' }]} />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
           keyboardShouldPersistTaps="handled"
@@ -90,12 +90,16 @@ export default function ForgotPasswordScreen({ onGoBack }: { onGoBack: () => voi
             <Ionicons name="chevron-back" size={26} color={T.white} />
           </TouchableOpacity>
 
-          {/* Icon */}
+          {/* Icon — shield with lock, matches security context + app theme */}
           <Animated.View style={[styles.iconWrap, { opacity: fadeAnim, transform: [{ scale: logoAnim.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1] }) }] }]}>
-            <LinearGradient colors={[T.green, '#00C6A0']} style={styles.iconGrad}>
-              <Ionicons name="key-outline" size={44} color="#000" />
+            <LinearGradient colors={['#00C6FF', '#0A84FF']} style={styles.iconGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Ionicons name="shield-checkmark" size={44} color="#FFF" />
             </LinearGradient>
-            <View style={[styles.iconGlow, { borderColor: T.green + '30' }]} />
+            <View style={[styles.iconGlow, { borderColor: '#00C6FF40' }]} />
+            {/* Small lock badge */}
+            <View style={{ position: 'absolute', bottom: -4, right: -4, width: 28, height: 28, borderRadius: 14, backgroundColor: '#0A0C10', borderWidth: 2, borderColor: '#00C6FF40', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="key" size={14} color="#00C6FF" />
+            </View>
           </Animated.View>
 
           <Animated.View style={{ opacity: fadeAnim, alignItems: 'center', marginBottom: 48, transform: [{ translateY: slideAnim }] }}>
@@ -114,7 +118,7 @@ export default function ForgotPasswordScreen({ onGoBack }: { onGoBack: () => voi
                 </Text>
               </View>
               <TouchableOpacity onPress={onGoBack} style={styles.backToLoginBtn}>
-                <LinearGradient colors={[T.green, '#00C6A0']} style={styles.backToLoginGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <LinearGradient colors={[T.green, '#0A84FF']} style={styles.backToLoginGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                   <Text style={styles.backToLoginText}>BACK TO LOGIN</Text>
                   <Ionicons name="arrow-forward" size={18} color="#000" />
                 </LinearGradient>
@@ -151,7 +155,7 @@ export default function ForgotPasswordScreen({ onGoBack }: { onGoBack: () => voi
 
               {/* Send button */}
               <TouchableOpacity onPress={onSendLink} disabled={loading} activeOpacity={0.85} style={styles.sendBtn}>
-                <LinearGradient colors={[T.green, '#00C6A0']} style={styles.sendGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <LinearGradient colors={[T.green, '#0A84FF']} style={styles.sendGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                   {loading ? <ActivityIndicator color="#000" /> : (
                     <>
                       <Text style={styles.sendBtnText}>SEND RESET LINK</Text>

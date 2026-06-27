@@ -31,9 +31,9 @@ export const THEMES: Record<ThemeName, ThemeTokens> = {
     muted:    '#2C2C2E',
     white:    '#FFFFFF',
     text:     '#8E8E93',
-    green:    '#32D74B',
-    greenDim: '#32D74B20',
-    accent2:  '#0A84FF',
+    green:    '#00C6FF',
+    greenDim: '#00C6FF20',
+    accent2:  '#FF6B35',
     red:      '#FF453A',
     gold:     '#FFD60A',
     orange:   '#FF9F0A',
@@ -69,19 +69,19 @@ export const THEMES: Record<ThemeName, ThemeTokens> = {
     orange:   '#FF8C00',
   },
   light: {
-    black:    '#F2F2F7', // Main screen background (light gray)
-    surface:  '#FFFFFF', // Card/Header background (pure white)
-    card:     '#FFFFFF', // Input/Action background
-    border:   '#D1D1D6', // Standard iOS light border
-    muted:    '#E5E5EA', // Secondary background
-    white:    '#000000', // Primary text color (inverted for light mode)
-    text:     '#636366', // Secondary text color
-    green:    '#248A3D', // Darker green for readability on white
-    greenDim: '#248A3D15',
-    accent2:  '#007AFF', // Standard iOS blue
-    red:      '#FF3B30',
-    gold:     '#A2845E',
-    orange:   '#FF9500',
+    black:    '#EAEAF0', // Screen background — visible contrast against white cards
+    surface:  '#FFFFFF',
+    card:     '#FFFFFF', // Cards are white — contrast comes from background + border
+    border:   '#B0B0BA', // Strong visible border
+    muted:    '#DCDCE4', // Muted backgrounds
+    white:    '#1C1C1E', // Primary text — near-black
+    text:     '#3A3A3C', // Secondary text — dark enough to read
+    green:    '#007AFF', // iOS blue — high contrast on white, used for primary actions
+    greenDim: '#007AFF18',
+    accent2:  '#5856D6', // Purple
+    red:      '#D70015', // Darker red — readable on white
+    gold:     '#7D5A00', // Dark gold
+    orange:   '#C93400', // Dark orange
   },
 };
 

@@ -1,0 +1,146 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ──────────────────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    function isValidString(val, maxLen) {
+      return val is string && val.size() > 0 && val.size() <= maxLen;
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    // Users can read any profile (for leaderboard/territory display)
+    // Users can only write their own profile
+    match /users/{uid} {
+      allow read: if isAuth();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid);
+      allow delete: if false; // Never delete user profiles
+
+      // Settings subcollection
+      match /meta/settings {
+        allow read, write: if isOwner(uid);
+      }
+
+      // Run history subcollection
+      match /runs/{runId} {
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid)
+          && request.resource.data.keys().hasAll(['id', 'createdAt', 'distanceMeters', 'durationSec'])
+          && request.resource.data.distanceMeters is number
+          && request.resource.data.durationSec is number;
+        allow update: if isOwner(uid);
+        allow delete: if isOwner(uid);
+      }
+    }
+
+    // ── Private user data (sensitive) ─────────────────────────────────────────
+    // Stores email, device tokens, lastSeen, etc.
+    match /usersPrivate/{uid} {
+      allow read, write: if isOwner(uid);
+      allow delete: if false;
+    }
+
+    // ── Territories ───────────────────────────────────────────────────────────
+    // Anyone authenticated can read territories (global map)
+    // Only authenticated users can create territories (must be their own)
+    // Only the owner can delete their territory
+    // Owner can update expiresAt (defend) — limited fields only
+    match /territories/{territoryId} {
+      allow read: if isAuth();
+
+      allow create: if isAuth()
+        && request.resource.data.ownerId == request.auth.uid
+        && isValidString(request.resource.data.name, 100)
+        && request.resource.data.polygon is list
+        && request.resource.data.polygon.size() >= 3
+        && request.resource.data.areaSqMeters is number
+        && request.resource.data.areaSqMeters > 0
+        && request.resource.data.perimeterMeters is number
+        && request.resource.data.perimeterMeters > 0;
+
+      allow delete: if isAuth()
+        && resource.data.ownerId == request.auth.uid;
+
+      // Update rules:
+      // 1. Owner can update their own territory (merge, rename, defend, expand)
+      // 2. Any authenticated user can shrink an enemy territory's polygon
+      //    (partial conquest) — but ONLY polygon/area/perimeter/centroid fields,
+      //    and the ownerId must NOT change (attacker can't steal ownership this way)
+      allow update: if isAuth()
+        && (
+          // Owner updating their own territory (merge, rename, defend, expand)
+          resource.data.ownerId == request.auth.uid
+          ||
+          // Partial conquest: attacker shrinks enemy polygon only
+          // ownerId must stay the same — this only shrinks, doesn't transfer ownership
+          (resource.data.ownerId != request.auth.uid
+            && request.resource.data.ownerId == resource.data.ownerId
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['polygon', 'areaSqMeters', 'perimeterMeters', 'centroidLat', 'centroidLng'])
+            && request.resource.data.areaSqMeters is number
+            && request.resource.data.areaSqMeters > 0)
+        );
+    }
+
+    // ── Teams ─────────────────────────────────────────────────────────────────
+    match /teams/{teamId} {
+      allow read: if isAuth();
+      allow create: if isAuth()
+        && request.resource.data.ownerId == request.auth.uid
+        && isValidString(request.resource.data.name, 40)
+        && isValidString(request.resource.data.tag, 4);
+      // Only the owner can change team membership or team metadata.
+      // (Prevents arbitrary users from overwriting memberIds.)
+      allow update: if isAuth() && resource.data.ownerId == request.auth.uid;
+      allow delete: if isAuth() && resource.data.ownerId == request.auth.uid;
+    }
+
+    // ── Follows (friends) ──────────────────────────────────────────────────────
+    // follows/{uid}/following/{targetUid}
+    // Users manage their own following list; any authenticated user can read it
+    // (needed for leaderboards / social graphs).
+    match /follows/{uid}/following/{targetUid} {
+      allow read: if isAuth();
+      allow create, update, delete: if isOwner(uid);
+    }
+
+    // ── Presence (live user locations) ───────────────────────────────────────
+    // Users write their own presence; all authenticated users can read
+    match /presence/{uid} {
+      allow read: if isAuth();
+      allow write: if isOwner(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    // ── Conquest Events ───────────────────────────────────────────────────────
+    // Attackers can create their own conquest events
+    // Both attacker AND defender can read events relevant to them
+    match /conquestEvents/{eventId} {
+      allow read: if isAuth()
+        && (resource.data.conqueredBy == request.auth.uid
+            || resource.data.previousOwnerId == request.auth.uid);
+      allow create: if isAuth()
+        && request.resource.data.conqueredBy == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // ── Leaderboard (computed/cached) ─────────────────────────────────────────
+    match /leaderboard/{entry} {
+      allow read: if isAuth();
+      allow write: if false; // Written by Cloud Functions only
+    }
+
+    // ── Default: deny everything else ─────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -3,6 +3,9 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { getUserProfile, UserProfile } from '../services/authService';
 import { syncHistoryToCloud } from '../services/history';
+import { registerFCMToken } from '../services/fcmService';
+import { loadQueue, processQueue } from '../services/offlineQueue';
+import { setMusicState } from '../hooks/useMusicStore';
 
 interface AuthContextValue {
   user: User | null;
@@ -48,8 +51,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setProfile(p);
           // Sync any locally-stored runs to the cloud for this user
           syncHistoryToCloud().catch(() => {});
+          // Register FCM token for push notifications
+          registerFCMToken().catch(() => {});
+          // Process any queued offline operations
+          loadQueue().then(queue => {
+            if (queue.length > 0) processQueue(queue).catch(() => {});
+          }).catch(() => {});
         } else {
           setProfile(null);
+          // Stop music and reset music state on logout
+          setMusicState({
+            isPlaying: false,
+            trackName: '',
+            positionMs: 0,
+            durationMs: 0,
+            onToggle: null,
+            onNext: null,
+            onPrev: null,
+            onPickMusic: null,
+            onSeek: null,
+          });
         }
       } catch (e) {
         console.error('AuthContext: Profile fetch failed', e);

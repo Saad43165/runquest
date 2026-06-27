@@ -8,10 +8,19 @@
       "distribution": "internal",
       "channel": "development"
     },
+    "simulator": {
+      "ios": {
+        "simulator": true
+      },
+      "channel": "development"
+    },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false
       },
       "channel": "preview"
     },

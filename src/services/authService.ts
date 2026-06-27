@@ -6,27 +6,41 @@ import {
   signOut,
   sendEmailVerification,
   signInWithPopup,
-  GoogleAuthProvider,
   User,
-  signInWithCredential as FirebaseAuthSignInWithCredential,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { auth, db, storage } from './firebase';
-import { Platform, NativeModules } from 'react-native';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
-
-const isGoogleSigninAvailable = !!NativeModules.RNGoogleSignin;
+import { auth, db } from './firebase';
+import { Platform } from 'react-native';
 
 export interface UserProfile {
   uid: string;
-  email: string;
   displayName: string;
   username: string;
   bio: string;
   avatarColor: string;
   photoURL?: string;
   createdAt: any;
+}
+
+export type PrivateUserProfile = {
+  uid: string;
+  email: string;
+  // device tokens / timestamps are written by fcmService
+  fcmTokens?: Record<string, string>;
+  lastSeen?: string;
+};
+
+function privateUserDoc(uid: string) {
+  return doc(db, 'usersPrivate', uid);
+}
+
+// Sanitize user-provided text to strip HTML/dangerous characters
+function sanitizeText(input: string, maxLength: number): string {
+  return input
+    .replace(/<[^>]*>/g, '')           // strip HTML tags
+    .replace(/[<>&"']/g, '')           // strip dangerous chars
+    .trim()
+    .slice(0, maxLength);
 }
 
 // Generate a deterministic avatar color from a string
@@ -63,88 +77,28 @@ export async function registerUser(
   // SEND VERIFICATION EMAIL
   await sendEmailVerification(cred.user);
 
+  const safeUsername = sanitizeText(username, 30);
+  const safeBio = sanitizeText(bio, 160);
+
   const profile: UserProfile = {
     uid: cred.user.uid,
-    email,
     displayName,
-    username,
-    bio,
+    username: safeUsername,
+    bio: safeBio,
     avatarColor: avatarColor(cred.user.uid),
     createdAt: serverTimestamp(),
   };
 
+  // Public profile (readable by other users)
   await setDoc(doc(db, 'users', cred.user.uid), profile);
+  // Private profile (owner-only; contains sensitive fields like email)
+  await setDoc(privateUserDoc(cred.user.uid), { uid: cred.user.uid, email } satisfies PrivateUserProfile, { merge: true });
   return cred.user;
 }
 
 export async function loginUser(email: string, password: string) {
   const cred = await signInWithEmailAndPassword(auth, email, password);
   return cred.user;
-}
-
-/**
- * Call this once at app startup (in App.tsx useEffect)
- */
-export function configureGoogleSignin() {
-  if (Platform.OS !== 'web' && isGoogleSigninAvailable) {
-    GoogleSignin.configure({
-      webClientId: '585105623148-f7d6p3ls17fmiti7iktcvl4ft25p3s9j.apps.googleusercontent.com',
-      offlineAccess: true,
-    });
-  }
-}
-
-export async function loginWithGoogle() {
-  if (Platform.OS === 'web') {
-    const provider = new GoogleAuthProvider();
-    const cred = await signInWithPopup(auth, provider);
-    await syncGoogleUserProfile(cred.user);
-    return cred.user;
-  } else {
-    // Native (Android/iOS)
-    if (!isGoogleSigninAvailable) {
-      throw new Error('Google Sign-In is unavailable in this environment (Expo Go). Please use a standalone build or development client.');
-    }
-    try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      const userInfo = await GoogleSignin.signIn();
-
-      const idToken = (userInfo as any).data?.idToken || (userInfo as any).idToken;
-      if (!idToken) throw new Error('No Google ID Token found');
-
-      const credential = GoogleAuthProvider.credential(idToken);
-      const cred = await FirebaseAuthSignInWithCredential(auth, credential);
-
-      await syncGoogleUserProfile(cred.user);
-      return cred.user;
-    } catch (error: any) {
-      console.error('Native Google Login Error:', error);
-      // DEVELOPER_ERROR (code 10) means SHA-1 not registered in Firebase
-      if (error.code === '10' || error.code === 10 || String(error.message).includes('DEVELOPER_ERROR')) {
-        throw new Error(
-          'Google Sign-In is not configured for this build. Please use email & password to log in.'
-        );
-      }
-      throw error;
-    }
-  }
-}
-
-async function syncGoogleUserProfile(user: User) {
-  const existing = await getUserProfile(user.uid);
-  if (!existing) {
-    const profile: UserProfile = {
-      uid: user.uid,
-      email: user.email || '',
-      displayName: user.displayName || 'Google User',
-      username: (user.email?.split('@')[0] || 'user') + Math.floor(Math.random() * 1000),
-      bio: '',
-      avatarColor: avatarColor(user.uid),
-      photoURL: user.photoURL || undefined,
-      createdAt: serverTimestamp(),
-    };
-    await setDoc(doc(db, 'users', user.uid), profile);
-  }
 }
 
 export async function reloadUser() {
@@ -155,16 +109,12 @@ export async function reloadUser() {
 }
 
 export async function logoutUser() {
-  console.log('logoutUser: Starting sign-out process...');
   try {
-    // Add a timeout to prevent hanging indefinitely
     const logoutPromise = signOut(auth);
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Logout timed out')), 6000)
     );
-
     await Promise.race([logoutPromise, timeoutPromise]);
-    console.log('logoutUser: Sign-out successful.');
   } catch (e) {
     console.error('logoutUser: Error signing out:', e);
     throw e;
@@ -185,18 +135,41 @@ export async function updateUserProfile(uid: string, patch: Partial<UserProfile>
 }
 
 export async function uploadProfileImage(uid: string, uri: string): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const fileRef = ref(storage, `avatars/${uid}`);
-  
-  await uploadBytes(fileRef, blob);
-  const downloadURL = await getDownloadURL(fileRef);
-  
-  // Update both Auth and Firestore
-  if (auth.currentUser) {
-    await updateProfile(auth.currentUser, { photoURL: downloadURL });
+  // Compress and resize to max 300×300 before storing as base64 in Firestore
+  // (Firebase Storage requires Blaze plan — we use Firestore instead, free tier)
+  let processedUri = uri;
+  try {
+    const ImageManipulator = require('expo-image-manipulator');
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 300, height: 300 } }],
+      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    processedUri = result.uri;
+  } catch {
+    // Native module not available — use original
   }
-  await updateUserProfile(uid, { photoURL: downloadURL });
-  
-  return downloadURL;
+
+  // Convert to base64 data URI for Firestore storage
+  const response = await fetch(processedUri);
+  const blob = await response.blob();
+  const base64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+
+  // Store base64 in Firestore user document
+  await updateUserProfile(uid, { photoURL: base64 });
+
+  // Update Firebase Auth profile with a placeholder (Auth doesn't accept base64)
+  // We use the Firestore value everywhere in the app via profile.photoURL
+  if (auth.currentUser) {
+    try {
+      await updateProfile(auth.currentUser, { photoURL: `data:image/jpeg;base64,profile_${uid}` });
+    } catch {}
+  }
+
+  return base64;
 }

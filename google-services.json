@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "585105623148-shs78nvmrisrpri9idif2l0c2loj4ck2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.runquest.app",
+            "certificate_hash": "aec350daff4899ea6ce0a1a41bb034ad0f3e70d9"
+          }
+        },
+        {
           "client_id": "585105623148-f7d6p3ls17fmiti7iktcvl4ft25p3s9j.apps.googleusercontent.com",
           "client_type": 3
         }
