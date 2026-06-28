@@ -583,7 +583,6 @@ function HeatmapCalendar({ history }: { history: RunRecord[] }) {
 
   return (
     <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
-      <div style={{ display: 'none' }} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 }}>MONTHLY HEATMAP</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

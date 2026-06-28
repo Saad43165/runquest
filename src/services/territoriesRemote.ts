@@ -70,7 +70,6 @@ export async function subscribeTerritories(
         where('centroidLat', '>=', minLat),
         where('centroidLat', '<=', maxLat),
         orderBy('centroidLat', 'asc'),
-        orderBy('createdAt', 'desc'),
         limit(500),
       );
     }
@@ -120,11 +119,9 @@ async function fetchTerritoriesNearLocation(nearLocation: { latitude: number; lo
     const { minLat, maxLat, minLng, maxLng } = boundingBox(nearLocation.latitude, nearLocation.longitude, 10);
     const q = query(
       collection(db, 'territories'),
-      where('expiresAt', '>', now),
       where('centroidLat', '>=', minLat),
       where('centroidLat', '<=', maxLat),
       orderBy('centroidLat', 'asc'),
-      orderBy('createdAt', 'desc'),
       limit(500),
     );
 

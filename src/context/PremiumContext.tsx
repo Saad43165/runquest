@@ -14,6 +14,7 @@ import {
   subscribePremiumStatus,
   emitPremiumChange,
   PremiumStatus,
+  setDeveloperOverrideTier,
 } from '../services/premiumService';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ type PremiumContextValue = {
   purchase: (productId: string) => Promise<{ success: boolean; error?: string }>;
   restore:  () => Promise<{ restored: boolean; error?: string }>;
   refresh:  () => Promise<void>;
+  setTier:  (tier: 'free' | 'basic' | 'pro' | 'elite') => void;
 };
 
 const PremiumContext = createContext<PremiumContextValue>({
@@ -34,6 +36,7 @@ const PremiumContext = createContext<PremiumContextValue>({
   purchase: async () => ({ success: false }),
   restore:  async () => ({ restored: false }),
   refresh:  async () => {},
+  setTier:  () => {},
 });
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
@@ -78,9 +81,14 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     return result;
   }, []);
 
+  const setTier = useCallback((tier: 'free' | 'basic' | 'pro' | 'elite') => {
+    setDeveloperOverrideTier(tier);
+    setStatus({ ...getPremiumStatus() });
+  }, []);
+
   return (
     <PremiumContext.Provider
-      value={{ isPremium: status.isPremium, status, loading, purchase, restore, refresh }}
+      value={{ isPremium: status.isPremium, status, loading, purchase, restore, refresh, setTier }}
     >
       {children}
     </PremiumContext.Provider>

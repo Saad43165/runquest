@@ -190,9 +190,9 @@ export async function getOfferings(): Promise<{
   const Purchases = await getPurchases();
   if (!Purchases || !RC_KEY || !_rcConfigured) {
     return {
-      basic: { price: '$2.99/mo', productId: PRODUCT_BASIC },
-      pro:   { price: '$5.99/mo', productId: PRODUCT_PRO },
-      elite: { price: '$9.99/mo', productId: PRODUCT_ELITE },
+      basic: { price: '$2.99', productId: PRODUCT_BASIC },
+      pro:   { price: '$5.99', productId: PRODUCT_PRO },
+      elite: { price: '$9.99', productId: PRODUCT_ELITE },
     };
   }
   try {
@@ -200,9 +200,9 @@ export async function getOfferings(): Promise<{
     const current = offerings.current;
     if (!current) {
       return {
-        basic: { price: '$2.99/mo', productId: PRODUCT_BASIC },
-        pro:   { price: '$5.99/mo', productId: PRODUCT_PRO },
-        elite: { price: '$9.99/mo', productId: PRODUCT_ELITE },
+        basic: { price: '$2.99', productId: PRODUCT_BASIC },
+        pro:   { price: '$5.99', productId: PRODUCT_PRO },
+        elite: { price: '$9.99', productId: PRODUCT_ELITE },
       };
     }
 
@@ -219,19 +219,19 @@ export async function getOfferings(): Promise<{
     return {
       basic: basic
         ? { price: basic.product.priceString, productId: basic.product.productIdentifier }
-        : { price: '$2.99/mo', productId: PRODUCT_BASIC },
+        : { price: '$2.99', productId: PRODUCT_BASIC },
       pro: pro
         ? { price: pro.product.priceString, productId: pro.product.productIdentifier }
-        : { price: '$5.99/mo', productId: PRODUCT_PRO },
+        : { price: '$5.99', productId: PRODUCT_PRO },
       elite: elite
         ? { price: elite.product.priceString, productId: elite.product.productIdentifier }
-        : { price: '$9.99/mo', productId: PRODUCT_ELITE },
+        : { price: '$9.99', productId: PRODUCT_ELITE },
     };
   } catch {
     return {
-      basic: { price: '$2.99/mo', productId: PRODUCT_BASIC },
-      pro:   { price: '$5.99/mo', productId: PRODUCT_PRO },
-      elite: { price: '$9.99/mo', productId: PRODUCT_ELITE },
+      basic: { price: '$2.99', productId: PRODUCT_BASIC },
+      pro:   { price: '$5.99', productId: PRODUCT_PRO },
+      elite: { price: '$9.99', productId: PRODUCT_ELITE },
     };
   }
 }

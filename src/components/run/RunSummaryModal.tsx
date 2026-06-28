@@ -180,9 +180,10 @@ export default function RunSummaryModal({ visible, onClose, onDiscard, data, isL
         />
 
         <ScrollView
+          style={{ flex: 1 }}
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
-          bounces={false}
+          bounces={true}
         >
           {/* Drag handle */}
           <View style={styles.handle} />
@@ -202,7 +203,7 @@ export default function RunSummaryModal({ visible, onClose, onDiscard, data, isL
                 backgroundColor: (closedLoop ? '#00C6A0' : '#FF9F0A') + '18',
                 borderColor:     (closedLoop ? '#00C6A0' : '#FF9F0A') + '50',
               }]}>
-                <Ionicons name={closedLoop ? 'trophy' : 'fitness'} size={34} color={closedLoop ? '#00C6A0' : '#FF9F0A'} />
+                <Ionicons name={closedLoop ? 'trophy' : 'fitness'} size={28} color={closedLoop ? '#00C6A0' : '#FF9F0A'} />
               </View>
             </Animated.View>
           </Animated.View>
@@ -393,24 +394,24 @@ const styles = StyleSheet.create({
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#2C2C30', alignSelf: 'center', marginBottom: 24 },
 
   // Hero
-  heroSection: { alignItems: 'center', justifyContent: 'center', marginBottom: 14, position: 'relative', height: 110 },
+  heroSection: { alignItems: 'center', justifyContent: 'center', marginBottom: 10, position: 'relative', height: 90 },
   glowRing: {
-    width: 100, height: 100, borderRadius: 50,
+    width: 80, height: 80, borderRadius: 40,
     borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
   heroIcon: {
-    width: 76, height: 76, borderRadius: 38,
+    width: 62, height: 62, borderRadius: 31,
     borderWidth: 1.5,
     alignItems: 'center', justifyContent: 'center',
   },
-  heroTitle: { color: '#FFF', fontSize: 28, fontWeight: '900', letterSpacing: -0.8, textAlign: 'center' },
-  heroSub: { color: '#8E8E93', fontSize: 13, marginTop: 4, textAlign: 'center' },
+  heroTitle: { color: '#FFF', fontSize: 24, fontWeight: '900', letterSpacing: -0.6, textAlign: 'center' },
+  heroSub: { color: '#8E8E93', fontSize: 12, marginTop: 3, textAlign: 'center' },
 
   // Distance hero
-  distanceBlock: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 6, marginBottom: 16 },
-  distanceNum: { color: '#FFF', fontSize: 72, fontWeight: '900', letterSpacing: -4, lineHeight: 76 },
-  distanceUnit: { color: '#8E8E93', fontSize: 20, fontWeight: '700', marginBottom: 10 },
+  distanceBlock: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 4, marginBottom: 12 },
+  distanceNum: { color: '#FFF', fontSize: 56, fontWeight: '900', letterSpacing: -3, lineHeight: 60 },
+  distanceUnit: { color: '#8E8E93', fontSize: 18, fontWeight: '700', marginBottom: 8 },
 
   // Zone badge
   zoneBadge: {

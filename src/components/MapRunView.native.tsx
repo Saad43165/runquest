@@ -332,13 +332,25 @@ var currentAvatarIndex = ${avatarIndex};
 
 // ── Marker Interpolation (for smooth Snapchat-map movements) ───────────────
 function animateMarker(marker, endCoords, duration) {
+  if (!marker || !endCoords || isNaN(endCoords[0]) || isNaN(endCoords[1])) {
+    return;
+  }
   duration = duration || 1200;
   var start = null;
   var startCoords = marker.getLngLat();
+  if (!startCoords) {
+    marker.setLngLat(endCoords);
+    return;
+  }
   var startLng = startCoords.lng;
   var startLat = startCoords.lat;
   var endLng = endCoords[0];
   var endLat = endCoords[1];
+
+  if (isNaN(startLng) || isNaN(startLat)) {
+    marker.setLngLat(endCoords);
+    return;
+  }
 
   // If distance is very small (no real change), just set it
   if (Math.abs(startLng - endLng) < 0.000001 && Math.abs(startLat - endLat) < 0.000001) {
@@ -357,7 +369,9 @@ function animateMarker(marker, endCoords, duration) {
     var curLng = startLng + (endLng - startLng) * t;
     var curLat = startLat + (endLat - startLat) * t;
 
-    marker.setLngLat([curLng, curLat]);
+    if (!isNaN(curLng) && !isNaN(curLat)) {
+      marker.setLngLat([curLng, curLat]);
+    }
 
     if (progress < 1) {
       marker._animationFrameId = requestAnimationFrame(step);
@@ -388,7 +402,13 @@ el.innerHTML = [
   // YOU badge
   '<div style="background:#00FF87;color:#000;font-size:8px;font-weight:900;padding:2px 7px;border-radius:6px;margin-top:2px;font-family:Arial,sans-serif;letter-spacing:0.5px;box-shadow:0 2px 6px rgba(0,255,135,0.4);">YOU</div>'
 ].join('');
-var userMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([${lng}, ${lat}]).addTo(map);
+
+var initLng = parseFloat("${lng}");
+var initLat = parseFloat("${lat}");
+var userMarker = null;
+if (!isNaN(initLng) && !isNaN(initLat) && initLng !== 0 && initLat !== 0) {
+  userMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([initLng, initLat]).addTo(map);
+}
 
 // ── Path & polygons ───────────────────────────────────────────────────────────
 var pathCoords = ${pathJSON};
@@ -789,8 +809,14 @@ function handleMsg(raw) {
   try {
     var msg = JSON.parse(raw);
     if (msg.type === 'UPDATE') {
-      animateMarker(userMarker, [msg.lng, msg.lat], 1000);
-      if (msg.recenter === true) map.easeTo({ center: [msg.lng, msg.lat], duration: 1200 });
+      if (!isNaN(msg.lng) && !isNaN(msg.lat) && msg.lng !== 0 && msg.lat !== 0) {
+        if (!userMarker) {
+          userMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([msg.lng, msg.lat]).addTo(map);
+        } else {
+          animateMarker(userMarker, [msg.lng, msg.lat], 1000);
+        }
+      }
+      if (msg.recenter === true && !isNaN(msg.lng) && !isNaN(msg.lat)) map.easeTo({ center: [msg.lng, msg.lat], duration: 1200 });
       if (msg.path !== undefined) { pathCoords = msg.path; drawPath(); }
       if (msg.polygons !== undefined) { polygonsData = msg.polygons; drawPolygons(); }
       if (msg.showNearbyTerritories !== undefined) { showNearbyTerritories = msg.showNearbyTerritories; drawPolygons(); }

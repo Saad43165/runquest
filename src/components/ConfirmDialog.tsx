@@ -63,13 +63,15 @@ export function ConfirmDialog({
 
           {/* Buttons */}
           <View style={styles.btnRow}>
-            <TouchableOpacity
-              onPress={onCancel}
-              activeOpacity={0.8}
-              style={[styles.cancelBtn, { backgroundColor: isLight ? '#F2F2F7' : T.card, borderColor: T.border }]}
-            >
-              <Text style={[styles.cancelText, { color: isLight ? '#000' : T.white }]}>{cancelText}</Text>
-            </TouchableOpacity>
+            {cancelText ? (
+              <TouchableOpacity
+                onPress={onCancel}
+                activeOpacity={0.8}
+                style={[styles.cancelBtn, { backgroundColor: isLight ? '#F2F2F7' : T.card, borderColor: T.border }]}
+              >
+                <Text style={[styles.cancelText, { color: isLight ? '#000' : T.white }]}>{cancelText}</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <TouchableOpacity
               onPress={onConfirm}

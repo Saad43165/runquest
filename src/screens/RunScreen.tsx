@@ -331,6 +331,13 @@ export default function RunScreen() {
         try { prevAchievementIds.current = new Set(JSON.parse(raw)); } catch { }
       }
     });
+    // Check if coachmarks guide has been completed
+    AsyncStorage.getItem('runquest:coachmarksDone').then(val => {
+      if (!val) {
+        // First time launch -> trigger coachmarks guide after a short delay!
+        setTimeout(() => triggerWalkthrough(), 2500);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -359,6 +366,37 @@ export default function RunScreen() {
     return unsub;
   }, []);
   const mapRef = useRef<MapRunViewRef>(null);
+
+  // Refs for dynamic Onboarding Coachmarks Walkthrough
+  const weatherPillRef = useRef<any>(null);
+  const startRunBtnRef = useRef<any>(null);
+  const runBotFABRef = useRef<any>(null);
+  const dashboardRef = useRef<any>(null);
+  const [coachmarkLayouts, setCoachmarkLayouts] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
+
+  const triggerWalkthrough = () => {
+    // Measure all target components on screen to pass coordinate data to CoachmarksOverlay
+    weatherPillRef.current?.measure((x: number, y: number, w: number, h: number, px: number, py: number) => {
+      const weatherCoords = { x: px || 0, y: py || 0, width: w || 0, height: h || 0 };
+      startRunBtnRef.current?.measure((x2: number, y2: number, w2: number, h2: number, px2: number, py2: number) => {
+        const startCoords = { x: px2 || 0, y: py2 || 0, width: w2 || 0, height: h2 || 0 };
+        runBotFABRef.current?.measure((x3: number, y3: number, w3: number, h3: number, px3: number, py3: number) => {
+          const botCoords = { x: px3 || 0, y: py3 || 0, width: w3 || 0, height: h3 || 0 };
+          dashboardRef.current?.measure((x4: number, y4: number, w4: number, h4: number, px4: number, py4: number) => {
+            const dashCoords = { x: px4 || 0, y: py4 || 0, width: w4 || 0, height: h4 || 0 };
+
+            setCoachmarkLayouts({
+              weather: weatherCoords,
+              startRun: startCoords,
+              runBot: botCoords,
+              dashboard: dashCoords,
+            });
+            setShowCoachmarks(true);
+          });
+        });
+      });
+    });
+  };
 
   // Handle flyTo param from Territories screen — fly map to a territory location
   useEffect(() => {
@@ -839,15 +877,20 @@ export default function RunScreen() {
   };
 
   const handleStop = async () => {
-    const isTinyRun = elapsed < 10 && displayDist < 10;
+    const isTinyRun = displayDist < 50 || elapsed < 15;
     playSound('run_stop');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
-    // Truly accidental tap — discard silently, no summary
+    // Accidental or tiny run — discard and notify, no summary modal
     if (isTinyRun) {
       await stopRun();
       setElapsed(0);
       reset();
+      Alert.alert(
+        "Run Too Short",
+        "Your run was under 50m or 15s, so it wasn't saved.",
+        [{ text: "OK" }]
+      );
       return;
     }
 
@@ -1350,93 +1393,62 @@ export default function RunScreen() {
           </View>
         </Animated.View>
       )}
+      {/* RIGHT: Location + Weather merged pill */}
+      {!cleanMode && !showSearch && (
+        <TouchableOpacity
+          ref={weatherPillRef}
+          onPress={weather ? () => setShowWeatherModal(true) : undefined}
+          activeOpacity={weather ? 0.8 : 1}
+          style={{
+            position: 'absolute', top: insets.top + 10, right: 16, zIndex: 500,
+            flexDirection: 'row', alignItems: 'center', gap: 0,
+            backgroundColor: '#0A0C10',
+            borderRadius: 22,
+            borderWidth: 1.5, borderColor: weather ? T.accent2 + '70' : 'rgba(255,255,255,0.22)',
+            overflow: 'hidden',
+            maxWidth: 200,
+          }}
+        >
+          {/* Location section */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 9, flexShrink: 1, minWidth: 0 }}>
+            <Ionicons name="location-sharp" size={11} color={T.green} style={{ flexShrink: 0 }} />
+            <Text style={{ color: '#DDD', fontSize: 11, fontWeight: '600', flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
+              {locationName
+                ? locationName.length > 14 ? locationName.slice(0, 13) + '…' : locationName
+                : region ? `${region.latitude.toFixed(2)},${region.longitude.toFixed(2)}` : '...'}
+            </Text>
+          </View>
+          {/* Divider + weather section — only when weather loaded */}
+          {weather && (
+            <>
+              <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 9, flexShrink: 0 }}>
+                <Ionicons name={weather.icon as any} size={14} color={T.accent2} />
+                <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFF' }}>{weather.temperature}°</Text>
+              </View>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
 
-      {/* ════ TOP OVERLAY: idle state pills ════ */}
-      {!cleanMode && !showSearch && state === 'idle' && (
-        <>
-          {/* LEFT: GPS status pill — replaces useless READY pill */}
-          <View style={{
+      {/* LEFT: Search Button capsule */}
+      {!cleanMode && settings?.showMapSearch !== false && state === 'idle' && !showSearch && (
+        <TouchableOpacity
+          onPress={() => { openSearch(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          activeOpacity={0.8}
+          style={{
             position: 'absolute', top: insets.top + 10, left: 16, zIndex: 500,
             flexDirection: 'row', alignItems: 'center', gap: 6,
             backgroundColor: '#0A0C10',
-            borderRadius: 22, paddingHorizontal: 12, paddingVertical: 8,
-            borderWidth: 1.5,
-            borderColor: accuracyMeters === null
-              ? 'rgba(255,165,0,0.5)'
-              : accuracyMeters > 20
-                ? '#FF9F0A80'
-                : T.green + '80',
-          }}>
-            <View style={{
-              width: 7, height: 7, borderRadius: 3.5,
-              backgroundColor: accuracyMeters === null
-                ? '#FF9F0A'
-                : accuracyMeters > 20
-                  ? '#FF9F0A'
-                  : T.green,
-            }} />
-            <Text style={{
-              color: accuracyMeters === null
-                ? '#FF9F0A'
-                : accuracyMeters > 20
-                  ? '#FF9F0A'
-                  : T.green,
-              fontSize: 11, fontWeight: '800', letterSpacing: 0.3,
-            }}>
-              {accuracyMeters === null
-                ? 'Acquiring GPS'
-                : accuracyMeters > 20
-                  ? `Weak ±${Math.round(accuracyMeters)}m`
-                  : `GPS ±${Math.round(accuracyMeters)}m`}
-            </Text>
-            {accuracyMeters !== null && accuracyMeters <= 20 && (
-              <Ionicons name="checkmark-circle" size={11} color={T.green} />
-            )}
-            {(accuracyMeters === null || accuracyMeters > 20) && (
-              <Ionicons name="warning-outline" size={11} color="#FF9F0A" />
-            )}
-          </View>
-
-          {/* CENTER: Location pill — sits between GPS pill and weather pill */}
-          {/* REMOVED — merged into weather pill on the right */}
-
-          {/* RIGHT: Location + Weather merged pill */}
-          <TouchableOpacity
-            onPress={weather ? () => setShowWeatherModal(true) : undefined}
-            activeOpacity={weather ? 0.8 : 1}
-            style={{
-              position: 'absolute', top: insets.top + 10, right: 16, zIndex: 500,
-              flexDirection: 'row', alignItems: 'center', gap: 0,
-              backgroundColor: '#0A0C10',
-              borderRadius: 22,
-              borderWidth: 1.5, borderColor: weather ? T.accent2 + '70' : 'rgba(255,255,255,0.22)',
-              overflow: 'hidden',
-              maxWidth: 200,
-            }}
-          >
-            {/* Location section */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 9, flexShrink: 1, minWidth: 0 }}>
-              <Ionicons name="location-sharp" size={11} color={T.green} style={{ flexShrink: 0 }} />
-              <Text style={{ color: '#DDD', fontSize: 11, fontWeight: '600', flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
-                {locationName
-                  ? locationName.length > 14 ? locationName.slice(0, 13) + '…' : locationName
-                  : region ? `${region.latitude.toFixed(2)},${region.longitude.toFixed(2)}` : '...'}
-              </Text>
-            </View>
-            {/* Divider + weather section — only when weather loaded */}
-            {weather && (
-              <>
-                <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.15)' }} />
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 9, flexShrink: 0 }}>
-                  <Ionicons name={weather.icon as any} size={14} color={T.accent2} />
-                  <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFF' }}>{weather.temperature}°</Text>
-                </View>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {/* GPS accuracy pill below weather removed — shown in left GPS pill instead */}
-        </>
+            borderRadius: 22,
+            borderWidth: 1.5, borderColor: T.green + '45',
+            paddingHorizontal: 14, paddingVertical: 9,
+            height: 42,
+          }}
+        >
+          <Ionicons name="search" size={14} color={T.green} />
+          <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFF' }}>Search</Text>
+        </TouchableOpacity>
       )}
 
       {/* ════ FLOATING MUSIC CONTROL — visible during run, just above navbar ════ */}
@@ -1525,17 +1537,7 @@ export default function RunScreen() {
           top: state === 'running' ? insets.top + 160 : insets.top + 100,
           right: 16,
         }]}>
-          {/* Feature Hub button */}
-          <TouchableOpacity
-            onPress={() => { setShowHub(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
-            style={[styles.toolBtn, {
-              backgroundColor: '#0A0C10',
-              borderColor: '#FFD60A',
-              borderWidth: 1.5,
-            }]}
-          >
-            <Ionicons name="apps" size={22} color="#FFD60A" />
-          </TouchableOpacity>
+
 
           {settings?.showTerritoryBtn !== false && (
             <TouchableOpacity
@@ -1570,15 +1572,6 @@ export default function RunScreen() {
           >
             <Ionicons name="locate" size={22} color="#FFF" />
           </TouchableOpacity>
-
-          {settings?.showMapSearch !== false && (
-            <TouchableOpacity
-              onPress={() => { openSearch(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-              style={[styles.toolBtn, { backgroundColor: '#0A0C10', borderColor: 'rgba(255,255,255,0.4)' }]}
-            >
-              <Ionicons name="search" size={22} color="#FFF" />
-            </TouchableOpacity>
-          )}
         </View>
       )}
 
@@ -1795,7 +1788,7 @@ export default function RunScreen() {
       ) : !cleanMode || state === 'idle' ? (
         /* Full dashboard — fixed height */
         <Animated.View style={[styles.dashboard, { transform: [{ translateY: dashAnim.interpolate({ inputRange: [0, 1], outputRange: [200, 0] }) }] }]}>
-          <View style={[styles.dashBlur, {
+          <View ref={dashboardRef} style={[styles.dashBlur, {
             backgroundColor: isLight ? 'rgba(255,255,255,0.97)' : 'rgba(12,12,12,0.94)',
             borderColor: isLight ? '#DDD' : 'rgba(255,255,255,0.12)',
             borderWidth: 1,
@@ -1997,7 +1990,7 @@ export default function RunScreen() {
 
               {state === 'idle' ? (
                 <Animated.View style={{ flex: 1, transform: [{ scale: startBtnPulse }] }}>
-                  <TouchableOpacity activeOpacity={0.8} onPress={startWithCountdown} style={[styles.primaryBtn, { backgroundColor: T.green, width: '100%' }]}>
+                  <TouchableOpacity ref={startRunBtnRef} activeOpacity={0.8} onPress={startWithCountdown} style={[styles.primaryBtn, { backgroundColor: T.green, width: '100%' }]}>
                     <View style={styles.btnGrad}>
                       <Ionicons name="play" size={20} color="#000" />
                       <Text style={styles.btnText}>START RUN</Text>
@@ -2043,6 +2036,8 @@ export default function RunScreen() {
       <RunBotFAB
         visible={settings?.showRunBotFab !== false && !cleanMode}
         onPress={() => setShowBotHelp(true)}
+        onGuidePress={triggerWalkthrough}
+        botRef={runBotFABRef}
         botPosition={botPosition}
         botPanResponder={botPanResponder}
         pulseAnim={pulseAnim}
@@ -2056,12 +2051,7 @@ export default function RunScreen() {
           setShowBotHelp(false);
           setTimeout(() => {
             try {
-              const parent = navigation.getParent?.();
-              if (parent) {
-                parent.navigate('Profile', { screen: 'ChatBot' });
-              } else {
-                navigation.navigate('ChatBot' as any);
-              }
+              navigation.navigate('Profile', { screen: 'ChatBot' } as any);
             } catch { }
           }, 300);
         }}
@@ -2371,6 +2361,13 @@ export default function RunScreen() {
           </TouchableOpacity>
         </>
       )}
+
+      {/* ── Coachmarks Walkthrough Overlay ── */}
+      <CoachmarksOverlay
+        visible={showCoachmarks}
+        onClose={() => setShowCoachmarks(false)}
+        layouts={coachmarkLayouts}
+      />
     </View>
   );
 }

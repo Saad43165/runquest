@@ -115,6 +115,14 @@ Personality: helpful, energetic, friendly running coach. Keep responses concise 
 - General tab: milestone vibration, navbar style (Floating Pill/Neon Dot/Side Accent/Bubble Slide)
 - Account tab: clear run history, sign out
 
+### Premium Subscriptions (RevenueCat & Sandbox Mode)
+- Access via: Profile Screen → Upgrade to Premium or bottom banner, or via Settings.
+- Three plans:
+  - **Basic ($2.99/mo)**: custom path colors and special avatar skins.
+  - **Pro ($5.99/mo)**: audio voice coach, custom goals, and route replay animations.
+  - **Elite ($9.99/mo)**: unlimited map styles (Satellite/3D), virtual pacer, and advanced stats.
+- Developer Sandbox/Dev Mode: in unconfigured environments (e.g. mock purchases), players can bypass configuration blocks and buy any tier instantly for testing by enabling Sandbox Developer Mode.
+
 ### Music Player
 - Load songs from device with + button
 - Controls: play/pause, skip forward/back, seek ±10s, seek bar

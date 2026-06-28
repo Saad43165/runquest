@@ -174,7 +174,7 @@ export default function PremiumScreen() {
   const { T } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const { isPremium, purchase, restore, status } = usePremium();
+  const { isPremium, purchase, restore, status, setTier } = usePremium();
 
   const [selectedPlan, setSelectedPlan] = useState<'basic' | 'pro' | 'elite'>('pro');
   const [loading, setLoading] = useState(false);
@@ -214,6 +214,23 @@ export default function PremiumScreen() {
   };
 
   const onPurchase = async () => {
+    // If selectedPlan is already the current tier, let's deactivate it!
+    if (isPremium && status.tier === selectedPlan) {
+      setLoading(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setTimeout(() => {
+        setTier('free');
+        setLoading(false);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          'Subscription Deactivated',
+          'Your premium status has been set back to Free. All limits restored.',
+          [{ text: 'OK' }]
+        );
+      }, 600);
+      return;
+    }
+
     const productId = selectedPlan === 'basic'
       ? (offerings.basic?.productId ?? 'runquest_premium_basic')
       : selectedPlan === 'pro'
@@ -223,18 +240,38 @@ export default function PremiumScreen() {
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // Call standard purchases
     const result = await purchase(productId);
     setLoading(false);
 
     if (result.success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert(
-        '🎉 Welcome to Premium!',
-        `You now have access to the ${selectedPlan.toUpperCase()} features. Enjoy RunQuest!`,
-        [{ text: 'Let\'s Go!', onPress: () => navigation.goBack() }]
+        '🎉 Plan Activated!',
+        `You now have access to ${selectedPlan.toUpperCase()} features.`,
+        [{ text: 'Awesome', onPress: () => navigation.goBack() }]
       );
-    } else if (result.error) {
-      Alert.alert('Purchase Failed', result.error);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        'Purchase Failed',
+        `${result.error ?? 'Store purchase could not be completed.'}\n\nWould you like to bypass using Developer Sandbox Mode?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Activate Sandbox Bypass',
+            onPress: () => {
+              setTier(selectedPlan);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert(
+                '🎉 Sandbox Activated!',
+                `Developer bypass active. You now have access to ${selectedPlan.toUpperCase()} features.`,
+                [{ text: 'Awesome', onPress: () => navigation.goBack() }]
+              );
+            }
+          }
+        ]
+      );
     }
   };
 
@@ -254,52 +291,6 @@ export default function PremiumScreen() {
   const basicPrice = offerings.basic?.price ?? '$2.99';
   const proPrice   = offerings.pro?.price   ?? '$5.99';
   const elitePrice = offerings.elite?.price ?? '$9.99';
-
-  if (isPremium) {
-    const tier = status.tier || 'basic';
-    const tierColors = {
-      basic: ['#00C6FF', '#0A84FF'] as const,
-      pro: ['#BF5FFF', '#7B2FBE'] as const,
-      elite: ['#FFD60A', '#FF9F0A'] as const,
-    };
-    const tierLabel = tier.toUpperCase();
-    const colors = tierColors[tier as keyof typeof tierColors] || tierColors.pro;
-
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0A0A0F' }}>
-        <OrbBackground />
-        <LinearGradient colors={[colors[0] + '20', 'transparent']} style={StyleSheet.absoluteFill} pointerEvents="none" />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-          <View style={{ width: 100, height: 100, borderRadius: 28, backgroundColor: colors[0] + '20', borderWidth: 2, borderColor: colors[0] + '50', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-            <FontAwesome5 name="crown" size={42} color={tier === 'elite' ? '#FFD60A' : '#FFF'} />
-          </View>
-          <Text style={{ color: '#FFF', fontSize: 28, fontWeight: '900', textAlign: 'center', marginBottom: 10 }}>
-            You're {tierLabel}! ✦
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 15, textAlign: 'center', lineHeight: 24, marginBottom: 32 }}>
-            {tier === 'basic'
-              ? 'Basic premium features unlocked: 10-day expiry, 1 custom navbar style, and standard trail colors.'
-              : tier === 'pro'
-                ? 'Pro premium features unlocked: 14-day expiry, 2 custom navbar styles, all neon trails, and a crown badge.'
-                : 'All-inclusive Elite features unlocked: 21-day expiry, all custom navbar styles, glow avatar rings, RunBot AI Assistant, and priority standing.'}
-          </Text>
-          {status.expiresAt && (
-            <Text style={{ color: colors[0], fontSize: 13, fontWeight: '700', marginBottom: 24 }}>
-              Renews {new Date(status.expiresAt).toLocaleDateString()}
-            </Text>
-          )}
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={{ borderRadius: 18, overflow: 'hidden', width: '100%' }}
-          >
-            <LinearGradient colors={colors} style={{ paddingVertical: 18, alignItems: 'center' }} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={{ color: tier === 'elite' ? '#000' : '#FFF', fontWeight: '900', fontSize: 16 }}>Back to RunQuest</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0A0A0F' }}>
@@ -369,6 +360,26 @@ export default function PremiumScreen() {
             <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 22 }}>
               Exclusive avatars, premium trails, longer territories{'\n'}and a crown on the leaderboard.
             </Text>
+
+            {isPremium && (
+              <View style={{
+                marginTop: 18,
+                backgroundColor: 'rgba(50,215,75,0.12)',
+                borderRadius: 20,
+                borderWidth: 1.5,
+                borderColor: '#32D74B',
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <Ionicons name="checkmark-circle" size={16} color="#32D74B" />
+                <Text style={{ color: '#32D74B', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 }}>
+                  ACTIVE TIER: {status.tier?.toUpperCase()}
+                </Text>
+              </View>
+            )}
           </Animated.View>
         </LinearGradient>
 
@@ -416,22 +427,33 @@ export default function PremiumScreen() {
           >
             <LinearGradient
               colors={
-                selectedPlan === 'elite'
-                  ? ['#FFD60A', '#FF9F0A']
-                  : selectedPlan === 'pro'
-                    ? ['#BF5FFF', '#7B2FBE']
-                    : ['#00C6FF', '#0A84FF']
+                isPremium && status.tier === selectedPlan
+                  ? ['#FF3B30', '#FF453A']
+                  : selectedPlan === 'elite'
+                    ? ['#FFD60A', '#FF9F0A']
+                    : selectedPlan === 'pro'
+                      ? ['#BF5FFF', '#7B2FBE']
+                      : ['#00C6FF', '#0A84FF']
               }
               style={{ paddingVertical: 19, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 10 }}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
               {loading ? (
-                <ActivityIndicator color={selectedPlan === 'elite' ? '#000' : '#FFF'} />
+                <ActivityIndicator color="#FFF" />
               ) : (
                 <>
-                  <FontAwesome5 name="crown" size={18} color={selectedPlan === 'elite' ? '#000' : '#FFD60A'} />
-                  <Text style={{ color: selectedPlan === 'elite' ? '#000' : '#FFF', fontWeight: '900', fontSize: 17 }}>
-                    Start {selectedPlan.toUpperCase()} — {selectedPlan === 'basic' ? formatBtnPrice(basicPrice) : selectedPlan === 'pro' ? formatBtnPrice(proPrice) : formatBtnPrice(elitePrice)}
+                  <FontAwesome5
+                    name={isPremium && status.tier === selectedPlan ? 'times-circle' : 'crown'}
+                    size={18}
+                    color={(selectedPlan === 'elite' && !(isPremium && status.tier === 'elite')) ? '#000' : '#FFF'}
+                  />
+                  <Text style={{ color: (selectedPlan === 'elite' && !(isPremium && status.tier === 'elite')) ? '#000' : '#FFF', fontWeight: '900', fontSize: 17 }}>
+                    {isPremium && status.tier === selectedPlan
+                      ? `Deactivate ${selectedPlan.toUpperCase()} (Go Free)`
+                      : isPremium
+                        ? `Switch / Upgrade to ${selectedPlan.toUpperCase()} — ${selectedPlan === 'basic' ? formatBtnPrice(basicPrice) : selectedPlan === 'pro' ? formatBtnPrice(proPrice) : formatBtnPrice(elitePrice)}`
+                        : `Start ${selectedPlan.toUpperCase()} — ${selectedPlan === 'basic' ? formatBtnPrice(basicPrice) : selectedPlan === 'pro' ? formatBtnPrice(proPrice) : formatBtnPrice(elitePrice)}`
+                    }
                   </Text>
                 </>
               )}

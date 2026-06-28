@@ -11,15 +11,18 @@ type RunBotFABProps = {
   botPanResponder: any;
   pulseAnim: Animated.Value;
   insets: any;
+  onGuidePress?: () => void;
+  botRef?: React.RefObject<any>;
 };
 
 export default function RunBotFAB({ 
-  visible, onPress, botPosition, botPanResponder, pulseAnim, insets 
+  visible, onPress, botPosition, botPanResponder, pulseAnim, insets, onGuidePress, botRef 
 }: RunBotFABProps) {
   if (!visible) return null;
 
   return (
     <Animated.View
+      ref={botRef}
       style={[styles.botFab, { 
         bottom: insets.bottom + 100, 
         right: 16, 
@@ -38,14 +41,37 @@ export default function RunBotFAB({
           style={styles.botFabInner}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         >
-          <View style={styles.botFabIconRow}>
-            <Text style={{ fontSize: 16 }}>🤖</Text>
-            <View style={styles.botFabOnlineDot} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={styles.botFabIconRow}>
+              <Text style={{ fontSize: 16 }}>🤖</Text>
+              <View style={styles.botFabOnlineDot} />
+            </View>
+            <View>
+              <Text style={styles.botFabTitle}>RunBot</Text>
+              <Text style={styles.botFabSub}>Tap to ask</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.botFabTitle}>RunBot</Text>
-            <Text style={styles.botFabSub}>Tap to ask</Text>
-          </View>
+          
+          {onGuidePress && (
+            <>
+              <View style={{ width: 1, height: 16, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 4 }} />
+              <TouchableOpacity
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onGuidePress();
+                }}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                style={{
+                  width: 20, height: 20, borderRadius: 10,
+                  backgroundColor: 'rgba(0, 198, 255, 0.15)',
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: 'rgba(0, 198, 255, 0.3)',
+                }}
+              >
+                <Ionicons name="help" size={12} color="#00C6FF" />
+              </TouchableOpacity>
+            </>
+          )}
         </LinearGradient>
       </TouchableOpacity>
     </Animated.View>

@@ -45,45 +45,45 @@ const DEFAULT_STEPS: CoachmarkStep[] = [
     desc: 'Always verify your GPS signal accuracy here before running. Also shows the live outdoor temperature and battlefield conditions.',
     speechText: 'Verify your GPS signal accuracy here before starting your run. It also displays the current outdoor weather conditions.',
     highlightStyle: {
-      top: 50,
-      left: 16,
-      width: width - 32,
-      height: 52,
-      borderRadius: 16,
+      top: Platform.OS === 'ios' ? 54 : 44,
+      right: 16,
+      width: 172,
+      height: 42,
+      borderRadius: 21,
     },
     arrowDirection: 'up',
-    arrowOffset: { x: width / 2 - 20, y: 108 },
-    cardOffset: { x: 20, y: 135 },
+    arrowOffset: { x: width - 90, y: (Platform.OS === 'ios' ? 54 : 44) + 48 },
+    cardOffset: { x: width - 310, y: (Platform.OS === 'ios' ? 54 : 44) + 72 },
   },
   {
     title: 'Begin Your Campaign',
     desc: 'Hold or tap the large action button here to start a run. When you complete a closed GPS loop of at least 100m, you can claim the territory!',
     speechText: 'Hold or tap the start button to begin your run. Complete a closed GPS loop of at least one hundred meters to claim the territory.',
     highlightStyle: {
-      bottom: 24,
-      alignSelf: 'center',
-      width: 140,
-      height: 60,
-      borderRadius: 30,
+      bottom: Platform.OS === 'ios' ? 44 : 20,
+      left: 124,
+      width: width - 140,
+      height: 52,
+      borderRadius: 16,
     },
     arrowDirection: 'down',
-    arrowOffset: { x: width / 2 - 20, y: height - 120 },
-    cardOffset: { x: 20, y: height - 310 },
+    arrowOffset: { x: width - 120, y: height - (Platform.OS === 'ios' ? 106 : 82) },
+    cardOffset: { x: 20, y: height - (Platform.OS === 'ios' ? 340 : 310) },
   },
   {
     title: 'Tactical AI Coach (RunBot)',
     desc: 'Need advice? Tap the AI RunBot floating button to chat. It can change settings, adjust your themes, switch navbars, and give custom coaching advice.',
     speechText: 'Need strategy tips or configurations? Tap the Run Bot assistant to chat. It can adjust your themes, configure navbars, or provide fitness coaching.',
     highlightStyle: {
-      bottom: 96,
-      right: 20,
-      width: 56,
-      height: 56,
-      borderRadius: 28,
+      bottom: Platform.OS === 'ios' ? 134 : 100,
+      right: 16,
+      width: 120,
+      height: 48,
+      borderRadius: 22,
     },
     arrowDirection: 'down',
-    arrowOffset: { x: width - 76, y: height - 170 },
-    cardOffset: { x: 20, y: height - 350 },
+    arrowOffset: { x: width - 76, y: height - (Platform.OS === 'ios' ? 182 : 148) },
+    cardOffset: { x: 20, y: height - (Platform.OS === 'ios' ? 400 : 360) },
   },
   {
     title: 'Warrior Profile & Quests Shop',
@@ -105,9 +105,10 @@ const DEFAULT_STEPS: CoachmarkStep[] = [
 interface Props {
   visible: boolean;
   onClose: () => void;
+  layouts?: Record<string, { x: number; y: number; width: number; height: number }>;
 }
 
-export default function CoachmarksOverlay({ visible, onClose }: Props) {
+export default function CoachmarksOverlay({ visible, onClose, layouts }: Props) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
 
@@ -115,6 +116,86 @@ export default function CoachmarksOverlay({ visible, onClose }: Props) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const cardScale = useRef(new Animated.Value(0.9)).current;
+
+  // [ignoring loop detection]
+  const steps = React.useMemo(() => {
+    const arr = [...DEFAULT_STEPS];
+    if (!layouts) return arr;
+
+    // 2. Weather & GPS Status (Step 1)
+    if (layouts.weather && layouts.weather.width > 0) {
+      const lay = layouts.weather;
+      arr[1] = {
+        ...arr[1],
+        highlightStyle: {
+          top: lay.y - 4,
+          left: lay.x - 4,
+          width: lay.width + 8,
+          height: lay.height + 8,
+          borderRadius: 22,
+        },
+        arrowOffset: { x: lay.x + lay.width / 2 - 15, y: lay.y + lay.height + 6 },
+        cardOffset: { x: 20, y: lay.y + lay.height + 45 },
+        arrowDirection: 'up',
+      };
+    }
+
+    // 3. Begin Your Campaign (Step 2)
+    if (layouts.startRun && layouts.startRun.width > 0) {
+      const lay = layouts.startRun;
+      arr[2] = {
+        ...arr[2],
+        highlightStyle: {
+          top: lay.y - 4,
+          left: lay.x - 4,
+          width: lay.width + 8,
+          height: lay.height + 8,
+          borderRadius: 18,
+        },
+        arrowOffset: { x: lay.x + lay.width / 2 - 15, y: lay.y - 40 },
+        cardOffset: { x: 20, y: Math.max(80, lay.y - 200) },
+        arrowDirection: 'down',
+      };
+    }
+
+    // 4. Tactical AI Coach (Step 3)
+    if (layouts.runBot && layouts.runBot.width > 0) {
+      const lay = layouts.runBot;
+      arr[3] = {
+        ...arr[3],
+        highlightStyle: {
+          top: lay.y - 4,
+          left: lay.x - 4,
+          width: lay.width + 8,
+          height: lay.height + 8,
+          borderRadius: 24,
+        },
+        arrowOffset: { x: lay.x + lay.width / 2 - 15, y: lay.y - 40 },
+        cardOffset: { x: 20, y: Math.max(80, lay.y - 200) },
+        arrowDirection: 'down',
+      };
+    }
+
+    // 5. Warrior Profile & Quests Shop (Step 4)
+    if (layouts.dashboard && layouts.dashboard.width > 0) {
+      const lay = layouts.dashboard;
+      arr[4] = {
+        ...arr[4],
+        highlightStyle: {
+          top: lay.y - 4,
+          left: lay.x - 4,
+          width: lay.width + 8,
+          height: lay.height + 8,
+          borderRadius: 28,
+        },
+        arrowOffset: { x: lay.x + lay.width / 2 - 15, y: lay.y - 40 },
+        cardOffset: { x: 20, y: Math.max(80, lay.y - 210) },
+        arrowDirection: 'down',
+      };
+    }
+
+    return arr;
+  }, [layouts]);
 
   // ─── Control speech speech synthesis ─────────────────────────────────────────
   useEffect(() => {
@@ -144,7 +225,7 @@ export default function CoachmarksOverlay({ visible, onClose }: Props) {
   const triggerSpeech = (stepIndex: number) => {
     Speech.stop();
     if (isMuted) return;
-    const text = DEFAULT_STEPS[stepIndex]?.speechText;
+    const text = steps[stepIndex]?.speechText;
     if (text) {
       Speech.speak(text, {
         language: 'en',
@@ -162,7 +243,7 @@ export default function CoachmarksOverlay({ visible, onClose }: Props) {
       Speech.stop();
     } else {
       // Speak current step
-      const text = DEFAULT_STEPS[currentStep]?.speechText;
+      const text = steps[currentStep]?.speechText;
       if (text) {
         Speech.speak(text, { language: 'en', rate: 0.95, pitch: 1.0 });
       }
@@ -180,7 +261,7 @@ export default function CoachmarksOverlay({ visible, onClose }: Props) {
   };
 
   const handleNext = () => {
-    if (currentStep < DEFAULT_STEPS.length - 1) {
+    if (currentStep < steps.length - 1) {
       transitionToStep(currentStep + 1);
     } else {
       handleComplete();
@@ -204,7 +285,7 @@ export default function CoachmarksOverlay({ visible, onClose }: Props) {
 
   if (!visible) return null;
 
-  const step = DEFAULT_STEPS[currentStep];
+  const step = steps[currentStep];
 
   return (
     <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
@@ -228,7 +309,7 @@ export default function CoachmarksOverlay({ visible, onClose }: Props) {
           {/* Header Row with Voice & Close */}
           <View style={styles.cardHeader}>
             <View style={styles.stepBadge}>
-              <Text style={styles.stepBadgeText}>GUIDE {currentStep + 1}/{DEFAULT_STEPS.length}</Text>
+              <Text style={styles.stepBadgeText}>GUIDE {currentStep + 1}/{steps.length}</Text>
             </View>
 
             <View style={styles.rightHeaderControls}>

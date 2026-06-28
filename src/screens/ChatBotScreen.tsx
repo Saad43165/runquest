@@ -224,9 +224,9 @@ const BOT_RESPONSES: BotEntry[] = [
     navAction: { label: 'Open Quests & Shop', icon: 'cart-outline', screen: 'QuestsShop', color: '#FFD60A' },
   },
   {
-    patterns: ['premium', 'upgrade', 'subscribe', 'pro', 'elite', 'buy premium', 'open premium', 'go to premium', 'get premium', 'elite tier'],
-    response: "Premium Membership 👑\n\nUnlock the full power of RunQuest:\n- **RunBot AI Coach**: chat with a custom fitness strategy AI assistant.\n- **Custom Map Styles**: 3D view, Satellite view, custom routes, and avatar customization.\n- **Advanced Analytics & Heatmaps**: full historical data unlock.",
-    navAction: { label: 'View Premium Tiers', icon: 'sparkles-outline', screen: 'Premium', color: '#BF5FFF' },
+    patterns: ['premium', 'upgrade', 'subscribe', 'pro', 'elite', 'buy premium', 'open premium', 'go to premium', 'get premium', 'elite tier', 'pricing', 'plans', 'cost'],
+    response: "Premium Membership Plans 👑\n\nUpgrade to unlock premium combat stats and tools:\n- **Basic ($2.99/mo)**: custom path colors and special avatar skins.\n- **Pro ($5.99/mo)**: audio voice coach, custom goals, and route replay animations.\n- **Elite ($9.99/mo)**: unlimited map styles (Satellite/3D), virtual pacer, and advanced stats.\n\n*Sandbox Bypass: Dev Mode lets you test these tiers for free in unconfigured environments!*",
+    navAction: { label: 'View Premium Tiers', icon: 'sparkles', screen: 'Premium', color: '#BF5FFF' },
   },
   {
     patterns: ['saad', 'developer', 'creator', 'who made this', 'open creator', 'go to creator', 'saad profile', 'creator screen'],
