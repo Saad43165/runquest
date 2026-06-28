@@ -11,7 +11,6 @@ import TeamsScreen from '../screens/TeamsScreen';
 import ActivityFeedScreen from '../screens/ActivityFeedScreen';
 import RunHistoryScreen from '../screens/RunHistoryScreen';
 import CreatorScreen from '../screens/CreatorScreen';
-import BugReportScreen from '../screens/BugReportScreen';
 import QuestsShopScreen from '../screens/QuestsShopScreen';
 import PremiumScreen from '../screens/PremiumScreen';
 import { withErrorBoundary } from '../components/ErrorBoundary';
@@ -26,7 +25,6 @@ const SafeTeams        = withErrorBoundary(TeamsScreen,        'Teams');
 const SafeActivityFeed = withErrorBoundary(ActivityFeedScreen, 'ActivityFeed');
 const SafeRunHistory   = withErrorBoundary(RunHistoryScreen,   'RunHistory');
 const SafeCreator      = withErrorBoundary(CreatorScreen,      'Creator');
-const SafeBugReport    = withErrorBoundary(BugReportScreen,    'BugReport');
 const SafeQuestsShop   = withErrorBoundary(QuestsShopScreen,   'QuestsShop');
 const SafePremium      = withErrorBoundary(PremiumScreen,      'Premium');
 
@@ -41,7 +39,6 @@ export type ProfileStackParamList = {
   ActivityFeed: undefined;
   RunHistory: undefined;
   Creator: undefined;
-  BugReport: undefined;
   QuestsShop: undefined;
   Premium: undefined;
 };
@@ -71,7 +68,6 @@ export function ProfileStackNavigator() {
       <Stack.Screen name="ActivityFeed" component={SafeActivityFeed} />
       <Stack.Screen name="RunHistory"   component={SafeRunHistory} />
       <Stack.Screen name="Creator"      component={SafeCreator} />
-      <Stack.Screen name="BugReport"    component={SafeBugReport} />
       <Stack.Screen name="QuestsShop"   component={SafeQuestsShop} />
       <Stack.Screen name="Premium"      component={SafePremium} />
     </Stack.Navigator>

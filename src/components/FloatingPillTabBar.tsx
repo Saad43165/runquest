@@ -48,8 +48,9 @@ export function FloatingPillTabBar({ state, navigation, descriptors }: BottomTab
   const isProfileTabActive = activeRoute.name === 'Profile';
   const profileRoute = state.routes.find(r => r.name === 'Profile');
   const profileState = profileRoute?.state;
-  const profileDepth = profileState ? (profileState.index ?? 0) : 0;
-  const shouldHide = isHidden || (isProfileTabActive && profileDepth > 0);
+  const activeProfileScreenName = profileState?.routes?.[profileState.index ?? 0]?.name;
+  const isDeepProfile = activeProfileScreenName && activeProfileScreenName !== 'ProfileMain';
+  const shouldHide = isHidden || (isProfileTabActive && isDeepProfile);
 
   // Mount slide-up animation
   const mountAnim = useRef(new Animated.Value(100)).current;

@@ -350,7 +350,7 @@ export default function PremiumScreen() {
           {/* Close */}
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={{ position: 'absolute', top: insets.top + 16, right: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' }}
+            style={{ position: 'absolute', top: insets.top + 16, right: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', zIndex: 100, elevation: 100 }}
           >
             <Ionicons name="close" size={20} color="#FFF" />
           </TouchableOpacity>

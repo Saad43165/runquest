@@ -434,6 +434,7 @@ function RunRow({ run, index, isMetric, displayName, onDelete, onReplay }: {
           borderLeftWidth: 3,
           borderLeftColor: runColor,
         }]}>
+          <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />
           {/* Top row: icon + date + badge */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 }}>
             <View style={[styles.iconWrap, { backgroundColor: runColor + '18' }]}>
@@ -529,7 +530,8 @@ function WeeklyBarChart({ history, isMetric }: { history: RunRecord[]; isMetric:
   const maxVal = Math.max(...data.map(d => d.distance), 1);
 
   return (
-    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
+    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 }}>
+      <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />
       <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8, marginBottom: 12 }}>WEEKLY ACTIVITY</Text>
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 100, paddingTop: 10 }}>
         {data.map((d, idx) => {
@@ -582,7 +584,8 @@ function HeatmapCalendar({ history }: { history: RunRecord[] }) {
   };
 
   return (
-    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
+    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 }}>
+      <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 }}>MONTHLY HEATMAP</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -651,6 +654,7 @@ function PersonalRecordsPanel({ history, isMetric }: { history: RunRecord[]; isM
 
   return (
     <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
+      <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />
       <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8, marginBottom: 12 }}>PERSONAL BESTS & STREAK</Text>
       
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>

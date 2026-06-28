@@ -60,6 +60,8 @@ const getPacerOptions = (isMetric: boolean) => [
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
+let hasShownPremiumPromoThisSession = false;
+
 export default function RunScreen() {
   const { T, themeName } = useTheme();
   const isLight = themeName === 'light';
@@ -88,6 +90,17 @@ export default function RunScreen() {
     prevRunState.current = state;
   }, [state, region]);
 
+  // Trigger Premium Promo on app load
+  useEffect(() => {
+    if (!hasShownPremiumPromoThisSession && userTier === 'free') {
+      hasShownPremiumPromoThisSession = true;
+      const t = setTimeout(() => {
+        setShowPremiumPromo(true);
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [userTier]);
+
   // Check for item collection when user location (region) updates
   useEffect(() => {
     if (state === 'running' && region && spawnedItems.length > 0) {
@@ -113,6 +126,7 @@ export default function RunScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<QuoteData | null>(null);
+  const [showPremiumPromo, setShowPremiumPromo] = useState(false);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const quotesRef = useRef<QuoteData[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -1011,6 +1025,7 @@ export default function RunScreen() {
             return map[c] ?? '#00FF87';
           })()}
           items={spawnedItems}
+          isLight={isLight}
         />
       </View>
 
@@ -1414,17 +1429,18 @@ export default function RunScreen() {
           style={{
             position: 'absolute', top: insets.top + 10, right: 16, zIndex: 500,
             flexDirection: 'row', alignItems: 'center', gap: 0,
-            backgroundColor: '#0A0C10',
+            backgroundColor: isLight ? '#FFF' : '#0A0C10',
             borderRadius: 22,
-            borderWidth: 1.5, borderColor: weather ? T.accent2 + '70' : 'rgba(255,255,255,0.22)',
+            borderWidth: 1.5, borderColor: weather ? T.accent2 + '70' : isLight ? '#00000015' : 'rgba(255,255,255,0.22)',
             overflow: 'hidden',
             maxWidth: 200,
+            shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
           }}
         >
           {/* Location section */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 9, flexShrink: 1, minWidth: 0 }}>
             <Ionicons name="location-sharp" size={11} color={T.green} style={{ flexShrink: 0 }} />
-            <Text style={{ color: '#DDD', fontSize: 11, fontWeight: '600', flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
+            <Text style={{ color: isLight ? '#000' : '#DDD', fontSize: 11, fontWeight: '600', flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
               {locationName
                 ? locationName.length > 14 ? locationName.slice(0, 13) + '…' : locationName
                 : region ? `${region.latitude.toFixed(2)},${region.longitude.toFixed(2)}` : '...'}
@@ -1433,10 +1449,10 @@ export default function RunScreen() {
           {/* Divider + weather section — only when weather loaded */}
           {weather && (
             <>
-              <View style={{ width: 1, height: 20, backgroundColor: 'rgba(255,255,255,0.15)' }} />
+              <View style={{ width: 1, height: 20, backgroundColor: isLight ? '#00000010' : 'rgba(255,255,255,0.15)' }} />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 9, flexShrink: 0 }}>
                 <Ionicons name={weather.icon as any} size={14} color={T.accent2} />
-                <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFF' }}>{weather.temperature}°</Text>
+                <Text style={{ fontSize: 12, fontWeight: '900', color: isLight ? '#000' : '#FFF' }}>{weather.temperature}°</Text>
               </View>
             </>
           )}
@@ -1451,15 +1467,16 @@ export default function RunScreen() {
           style={{
             position: 'absolute', top: insets.top + 10, left: 16, zIndex: 500,
             flexDirection: 'row', alignItems: 'center', gap: 6,
-            backgroundColor: '#0A0C10',
+            backgroundColor: isLight ? '#FFF' : '#0A0C10',
             borderRadius: 22,
-            borderWidth: 1.5, borderColor: T.green + '45',
+            borderWidth: 1.5, borderColor: isLight ? T.green + '80' : T.green + '45',
             paddingHorizontal: 14, paddingVertical: 9,
             height: 42,
+            shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5,
           }}
         >
           <Ionicons name="search" size={14} color={T.green} />
-          <Text style={{ fontSize: 12, fontWeight: '900', color: '#FFF' }}>Search</Text>
+          <Text style={{ fontSize: 12, fontWeight: '900', color: isLight ? '#000' : '#FFF' }}>Search</Text>
         </TouchableOpacity>
       )}
 
@@ -1555,11 +1572,11 @@ export default function RunScreen() {
             <TouchableOpacity
               onPress={() => { setShowPolygons(v => !v); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
               style={[styles.toolBtn, {
-                backgroundColor: showPolygons ? T.green : '#0A0C10',
-                borderColor: showPolygons ? T.green : 'rgba(255,255,255,0.4)',
+                backgroundColor: showPolygons ? T.green : isLight ? '#FFF' : '#0A0C10',
+                borderColor: showPolygons ? T.green : isLight ? '#00000015' : 'rgba(255,255,255,0.4)',
               }]}
             >
-              <Ionicons name={showPolygons ? 'map' : 'map-outline'} size={22} color={showPolygons ? '#000' : '#FFF'} />
+              <Ionicons name={showPolygons ? 'map' : 'map-outline'} size={22} color={showPolygons ? '#000' : isLight ? '#000' : '#FFF'} />
             </TouchableOpacity>
           )}
 
@@ -1567,22 +1584,22 @@ export default function RunScreen() {
           <TouchableOpacity
             onPress={() => { setShowMapPicker(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             style={[styles.toolBtn, {
-              backgroundColor: '#0A0C10',
-              borderColor: 'rgba(255,255,255,0.4)',
+              backgroundColor: isLight ? '#FFF' : '#0A0C10',
+              borderColor: isLight ? '#00000015' : 'rgba(255,255,255,0.4)',
             }]}
           >
             <Ionicons
               name="layers-outline"
               size={22}
-              color="#FFF"
+              color={isLight ? '#000' : '#FFF'}
             />
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => { if (region) { mapRef.current?.recenter(region.latitude, region.longitude); recenter(); } Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-            style={[styles.toolBtn, { backgroundColor: '#0A0C10', borderColor: 'rgba(255,255,255,0.4)' }]}
+            style={[styles.toolBtn, { backgroundColor: isLight ? '#FFF' : '#0A0C10', borderColor: isLight ? '#00000015' : 'rgba(255,255,255,0.4)' }]}
           >
-            <Ionicons name="locate" size={22} color="#FFF" />
+            <Ionicons name="locate" size={22} color={isLight ? '#000' : '#FFF'} />
           </TouchableOpacity>
         </View>
       )}
@@ -1628,8 +1645,8 @@ export default function RunScreen() {
                       colors={
                         opt.id === 'default' ? ['#E8F4F8', '#C5E0EC'] :
                         opt.id === 'dark' ? ['#1A1F2C', '#0D1117'] :
-                        opt.id === 'satellite' ? ['#1B3A1B', '#0A1A0A'] :
-                        ['#2D3748', '#1A202C']
+                        opt.id === 'satellite' ? ['#4A7C59', '#1E3B27'] : // Bright green terrain
+                        ['#3182CE', '#2B6CB0'] // 3D grid blue
                       }
                       style={{
                         width: '100%', aspectRatio: 1, borderRadius: 16,
@@ -1646,7 +1663,7 @@ export default function RunScreen() {
                       <Ionicons
                         name={opt.icon as any}
                         size={26}
-                        color={isActive ? opt.color : (isLight ? '#4A5568' : '#A0AEC0')}
+                        color={isActive ? opt.color : (opt.id === 'default' ? 'rgba(0,0,0,0.4)' : 'rgba(255,255,255,0.7)')}
                       />
                       {isActive && (
                         <View style={{
@@ -2222,23 +2239,8 @@ export default function RunScreen() {
                       onPress={() => {
                         setShowHub(false);
                         setTimeout(() => {
-                          // From the Run tab, navigation.getParent() = Tab Navigator
-                          // We must tell the Tab Navigator to switch to 'Profile'
-                          // AND pass the nested screen as a param
                           try {
-                            const tabNav = navigation.getParent?.();
-                            if (tabNav) {
-                              tabNav.navigate('Profile', {
-                                screen: item.id,
-                                initial: false,
-                              });
-                            } else {
-                              // Fallback: try direct navigation (works if already in Profile tab)
-                              navigation.navigate('Profile' as any, {
-                                screen: item.id,
-                                initial: false,
-                              });
-                            }
+                            navigation.navigate('Profile', { screen: item.id });
                           } catch (err) {
                             console.warn('Hub navigation failed:', err);
                           }
@@ -2406,6 +2408,53 @@ export default function RunScreen() {
           }}
         />
       )}
+
+      {/* Premium Promo Modal — Appears elegantly on first load instead of force-navigating */}
+      <Modal visible={showPremiumPromo} transparent animationType="fade" onRequestClose={() => setShowPremiumPromo(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ width: '100%', maxWidth: 360, backgroundColor: isLight ? '#FFF' : '#111', borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: isLight ? '#DDD' : 'rgba(255,255,255,0.1)', shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 20, elevation: 20 }}>
+            <LinearGradient colors={['#FFD60A', '#FF9F0A']} style={{ padding: 30, alignItems: 'center' }}>
+              <Ionicons name="diamond" size={48} color="#FFF" style={{ marginBottom: 10, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 10 }} />
+              <Text style={{ color: '#FFF', fontSize: 24, fontWeight: '900', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.2)', textShadowRadius: 10, textShadowOffset: { width: 0, height: 2 } }}>
+                Unlock RunQuest Pro
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 13, fontWeight: '600', textAlign: 'center', marginTop: 8 }}>
+                Claim bigger territories, use elite AI coaching, and access premium map avatars.
+              </Text>
+            </LinearGradient>
+            
+            <View style={{ padding: 24, gap: 16 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,214,10,0.15)', alignItems: 'center', justifyContent: 'center' }}><Ionicons name="map" size={18} color="#FF9F0A" /></View>
+                <View style={{ flex: 1 }}><Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 15, fontWeight: '800' }}>3x Territory Claim</Text><Text style={{ color: isLight ? '#666' : '#AAA', fontSize: 12 }}>Paint the map three times as fast.</Text></View>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,214,10,0.15)', alignItems: 'center', justifyContent: 'center' }}><Ionicons name="flash" size={18} color="#FF9F0A" /></View>
+                <View style={{ flex: 1 }}><Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 15, fontWeight: '800' }}>Live Ghost Pacer</Text><Text style={{ color: isLight ? '#666' : '#AAA', fontSize: 12 }}>Race against real-time elite AI pacing.</Text></View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setShowPremiumPromo(false);
+                  navigation.navigate('Profile', { screen: 'Premium' });
+                }}
+                activeOpacity={0.8}
+                style={{ backgroundColor: '#000', paddingVertical: 16, borderRadius: 20, alignItems: 'center', marginTop: 10, shadowColor: '#FFD60A', shadowOpacity: 0.3, shadowRadius: 10, elevation: 5 }}
+              >
+                <Text style={{ color: '#FFD60A', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 }}>VIEW PREMIUM PLANS</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={() => setShowPremiumPromo(false)}
+                style={{ paddingVertical: 12, alignItems: 'center' }}
+              >
+                <Text style={{ color: isLight ? '#888' : '#666', fontSize: 13, fontWeight: '700' }}>Maybe Later</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }

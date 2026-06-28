@@ -111,6 +111,7 @@ type Props = {
   pathStyle?: 'solid' | 'dashed' | 'glow';
   pathColor?: string;
   items?: { id: string; type: 'gem' | 'shield' | 'boost' | 'chest'; latitude: number; longitude: number; collected: boolean }[];
+  isLight?: boolean;
 };
 
 // ─── Build MapLibre HTML (used for ALL tile styles) ──────────────────────────
@@ -133,6 +134,7 @@ function buildLeafletHTML(
   pathStyle: string,
   pathColor: string,
   items: { id: string; type: 'gem' | 'shield' | 'boost' | 'chest'; latitude: number; longitude: number; collected: boolean }[],
+  isLight: boolean,
 ): string {
   const pathJSON = JSON.stringify(path.map(p => [p.latitude, p.longitude]));
   const itemsJSON = JSON.stringify(items || []);
@@ -208,10 +210,10 @@ ${maplibreScript}
   }
   #zoom-btns button{
     width:48px;height:48px;
-    background-color:#0A0C10;
-    border:2px solid rgba(255,255,255,0.6);
+    background-color:${isLight ? '#FFFFFF' : '#0A0C10'};
+    border:2px solid ${isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.6)'};
     border-radius:14px;
-    color:#FFFFFF;
+    color:${isLight ? '#000000' : '#FFFFFF'};
     font-size:28px;
     font-weight:bold;
     line-height:1;
@@ -224,13 +226,14 @@ ${maplibreScript}
     padding:0;
     margin:0;
     text-align:center;
+    box-shadow: ${isLight ? '0 4px 12px rgba(0,0,0,0.15)' : 'none'};
   }
-  #zoom-btns button:active{background-color:#1C1C2E;}
+  #zoom-btns button:active{background-color:${isLight ? '#F0F0F0' : '#1C1C2E'};}
 </style>
 </head>
 <body>
 <div id="map"></div>
-${showZoomButtons ? `<div id="zoom-btns"><button id="zi" onclick="map.zoomIn()"><span style="color:#FFF;font-size:28px;font-weight:bold;line-height:1;">+</span></button><button id="zo" onclick="map.zoomOut()"><span style="color:#FFF;font-size:32px;font-weight:bold;line-height:1;">&#8722;</span></button></div>` : ''}
+${showZoomButtons ? `<div id="zoom-btns"><button id="zi" onclick="map.zoomIn()"><span style="color:${isLight ? '#000' : '#FFF'};font-size:28px;font-weight:bold;line-height:1;">+</span></button><button id="zo" onclick="map.zoomOut()"><span style="color:${isLight ? '#000' : '#FFF'};font-size:32px;font-weight:bold;line-height:1;">&#8722;</span></button></div>` : ''}
 <script>
 var map = new maplibregl.Map({
   container: 'map',
@@ -922,6 +925,7 @@ const MapRunViewInner = forwardRef<MapRunViewRef, Props>(function MapRunView({
   pathStyle = 'solid',
   pathColor = '#00FF87',
   items = [],
+  isLight = false,
 }, ref) {
   const webRef          = useRef<WebView>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -1127,6 +1131,7 @@ const MapRunViewInner = forwardRef<MapRunViewRef, Props>(function MapRunView({
       pathStyle,
       pathColor,
       items,
+      isLight,
     );
   }
 

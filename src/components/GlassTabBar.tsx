@@ -65,8 +65,9 @@ export function GlassTabBar({ state, navigation, descriptors }: BottomTabBarProp
   const tabBarStyle = activeDescriptor?.options?.tabBarStyle as any;
   const isHidden = tabBarStyle?.display === "none";
   const isProfileTabActive = activeRoute.name === "Profile";
-  const profileRoute = state.routes.find(r => r.name === "Profile");
-  const profileDepth = profileRoute?.state ? (profileRoute.state.index ?? 0) : 0;
+  const profileRoute = state.routes.find(r => r.name === 'Profile');
+  const activeProfileScreenName = profileRoute?.state?.routes?.[profileRoute.state.index ?? 0]?.name;
+  const isDeepProfile = activeProfileScreenName && activeProfileScreenName !== 'ProfileMain';
 
   const isRunTabActive = activeRoute.name === "Run";
   const showRunBanner = runState.isActive && !isRunTabActive;
@@ -82,7 +83,7 @@ export function GlassTabBar({ state, navigation, descriptors }: BottomTabBarProp
     ]).start();
   }, []);
 
-    if (isHidden || (isProfileTabActive && profileDepth > 0)) {
+    if (isHidden || (isProfileTabActive && isDeepProfile)) {
     const activeSubRoute = profileRoute?.state?.routes?.[profileRoute.state.index ?? 0]?.name ?? "";
     if (!showRunBanner || activeSubRoute === "ChatBot") return null;
     return (

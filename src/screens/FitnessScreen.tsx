@@ -388,7 +388,8 @@ function StatCard({ icon, label, value, unit, color, index }: {
   }, []);
   return (
     <Animated.View style={{ flex: 1, opacity: anim, transform: [{ scale: anim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }, { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [14, 0] }) }] }}>
-      <View style={[styles.statCard, { flex: 1, backgroundColor: T.card, borderColor: color + "30", borderTopColor: color }]}>
+      <View style={[styles.statCard, { flex: 1, backgroundColor: T.card, borderColor: color + "30", borderTopColor: color, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 }]}>
+        <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />
         <View style={[styles.statIconWrap, { backgroundColor: color + "20" }]}>
           <Ionicons name={icon as any} size={18} color={color} />
         </View>
@@ -411,7 +412,8 @@ function BarChart({ data, color, label }: { data: { day: string; val: number }[]
     )).start();
   }, []);
   return (
-    <View style={[styles.chartCard, { backgroundColor: T.card, borderColor: T.border }]}>
+    <View style={[styles.chartCard, { backgroundColor: T.card, borderColor: T.border, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 }]}>
+      <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
         <View style={{ width: 3, height: 16, borderRadius: 2, backgroundColor: color }} />
         <Text style={{ color: T.text, fontSize: 10, fontWeight: "800", letterSpacing: 1.5 }}>{label}</Text>
@@ -606,14 +608,14 @@ export default function FitnessScreen() {
         {tab === "overview" && (
           <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
             {/* Hero stat */}
-            <View style={[styles.heroCard, { backgroundColor: T.card, borderColor: "#FF453A30" }]}>
-              <LinearGradient colors={["#FF453A18", "transparent"]} style={StyleSheet.absoluteFill} />
+            <View style={[styles.heroCard, { backgroundColor: T.card, borderColor: "#FF453A30", shadowColor: '#FF453A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 8 }]}>
+              <LinearGradient colors={["#FF453A25", "transparent"]} style={StyleSheet.absoluteFill} />
               <View style={{ flex: 1 }}>
                 <Text style={{ color: T.text, fontSize: 10, fontWeight: "800", letterSpacing: 1.5 }}>TOTAL CALORIES BURNED</Text>
                 <Text style={{ color: T.white, fontSize: 40, fontWeight: "900", letterSpacing: -1, marginTop: 4 }}>{totalCalories.toLocaleString()}</Text>
                 <Text style={{ color: "#FF453A", fontSize: 13, fontWeight: "700" }}>kcal across {totalRuns} runs</Text>
               </View>
-              <View style={[styles.heroIcon, { backgroundColor: "#FF453A20" }]}>
+              <View style={[styles.heroIcon, { backgroundColor: "#FF453A25" }]}>
                 <Ionicons name="flame" size={32} color="#FF453A" />
               </View>
             </View>

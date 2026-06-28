@@ -191,12 +191,14 @@ function Divider() {
 }
 
 export default function ProfileScreen() {
-  const { T } = useTheme();
+  const { T, themeName } = useTheme();
+  const isLight = themeName === 'light';
   const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile } = useAuth();
   const { isPremium, status } = usePremium();
   const userTier = status.tier || 'free';
   const tierColor = userTier === 'elite' ? '#FFD60A' : userTier === 'pro' ? '#BF5FFF' : userTier === 'basic' ? '#00C6FF' : '#32D74B';
+  const effTierColor = isLight && userTier === 'elite' ? '#D4A000' : tierColor;
   const tierLabel = userTier === 'elite' ? 'Elite Tier Active' : userTier === 'pro' ? 'Pro Tier Active' : userTier === 'basic' ? 'Basic Tier Active' : 'Premium Tier Active';
   const navigation = useNavigation<StackNavigationProp<ProfileStackParamList>>();
   const { territories } = useTerritories();
@@ -388,7 +390,7 @@ export default function ProfileScreen() {
               ]).start();
             }, [progress]);
             return (
-              <View style={{ backgroundColor: '#141417', borderRadius: 20, borderWidth: 1, borderTopWidth: 3, borderColor: 'rgba(255,255,255,0.07)', borderTopColor: avatarCol, padding: 18, marginTop: 16 }}>
+              <View style={{ backgroundColor: isLight ? '#FFF' : '#141417', borderRadius: 20, borderWidth: 1, borderTopWidth: 3, borderColor: isLight ? '#00000010' : 'rgba(255,255,255,0.07)', borderTopColor: avatarCol, padding: 18, marginTop: 16 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
                   {/* Level badge */}
                   <Animated.View style={[{
@@ -402,8 +404,8 @@ export default function ProfileScreen() {
                   </Animated.View>
                   {/* Info */}
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: '#FFF', fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>{level === 100 ? 'MAX LEVEL' : level === 100 ? 'Capped' : getLevelInfo(stats.totalDistanceMeters).rank}</Text>
-                    <Text style={{ color: '#8E8E93', fontSize: 11, marginTop: 2 }}>{getLevelInfo(stats.totalDistanceMeters).km.toFixed(1)} {unitLabel} total · {getLevelInfo(stats.totalDistanceMeters).xp.toLocaleString()} XP</Text>
+                    <Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>{level === 100 ? 'MAX LEVEL' : level === 100 ? 'Capped' : getLevelInfo(stats.totalDistanceMeters).rank}</Text>
+                    <Text style={{ color: isLight ? '#666' : '#8E8E93', fontSize: 11, marginTop: 2 }}>{getLevelInfo(stats.totalDistanceMeters).km.toFixed(1)} {unitLabel} total · {getLevelInfo(stats.totalDistanceMeters).xp.toLocaleString()} XP</Text>
                   </View>
                   {/* Progress % */}
                   <View style={{ backgroundColor: avatarCol + '20', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
@@ -440,8 +442,8 @@ export default function ProfileScreen() {
                   <FontAwesome5 name="crown" size={18} color="#FFD60A" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '900' }}>Get RunQuest Premium ✦</Text>
-                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 }}>Unlock all avatars, path colors, and benefits</Text>
+                  <Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 13, fontWeight: '900' }}>Get RunQuest Premium ✦</Text>
+                  <Text style={{ color: T.text, fontSize: 11, marginTop: 2 }}>Unlock all avatars, path colors, and benefits</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={16} color="#BF5FFF" />
               </LinearGradient>
@@ -450,16 +452,16 @@ export default function ProfileScreen() {
             <TouchableOpacity 
               onPress={() => nav('Premium')}
               activeOpacity={0.85}
-              style={{ borderRadius: 16, marginTop: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: tierColor + '40', backgroundColor: tierColor + '0d', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              style={{ borderRadius: 16, marginTop: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: effTierColor + '40', backgroundColor: effTierColor + '10', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
             >
-              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: tierColor + '20', alignItems: 'center', justifyContent: 'center' }}>
-                <FontAwesome5 name="crown" size={18} color={tierColor} />
+              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: effTierColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome5 name="crown" size={18} color={effTierColor} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: tierColor, fontSize: 13, fontWeight: '900' }}>{tierLabel} ✦</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 }}>Tap here to manage your subscription</Text>
+                <Text style={{ color: effTierColor, fontSize: 13, fontWeight: '900' }}>{tierLabel} ✦</Text>
+                <Text style={{ color: T.text, fontSize: 11, marginTop: 2 }}>Tap here to manage your subscription</Text>
               </View>
-              <Ionicons name="settings-outline" size={18} color={tierColor} />
+              <Ionicons name="settings-outline" size={18} color={effTierColor} />
             </TouchableOpacity>
           )}
         </View>
@@ -481,13 +483,13 @@ export default function ProfileScreen() {
               return () => countAnim.removeListener(id);
             }, [s.value]);
             return (
-              <View key={i} style={{ flex: 1, backgroundColor: '#141417', borderRadius: 16, borderWidth: 1, borderTopWidth: 3, borderColor: 'rgba(255,255,255,0.06)', borderTopColor: s.color, padding: 12, alignItems: 'center', gap: 4 }}>
+              <View key={i} style={{ flex: 1, backgroundColor: isLight ? '#FFF' : '#141417', borderRadius: 16, borderWidth: 1, borderTopWidth: 3, borderColor: isLight ? '#00000010' : 'rgba(255,255,255,0.06)', borderTopColor: s.color, padding: 12, alignItems: 'center', gap: 4 }}>
                 <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: s.color + '20', alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name={s.icon as any} size={13} color={s.color} />
                 </View>
-                <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: -0.5 }}>{display}</Text>
+                <Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: -0.5 }}>{display}</Text>
                 <Text style={{ color: s.color, fontSize: 8, fontWeight: '800', letterSpacing: 0.5 }}>{s.unit}</Text>
-                <Text style={{ color: '#555', fontSize: 7, fontWeight: '700', letterSpacing: 0.5 }}>{s.label}</Text>
+                <Text style={{ color: isLight ? '#888' : '#555', fontSize: 7, fontWeight: '700', letterSpacing: 0.5 }}>{s.label}</Text>
               </View>
             );
           })}

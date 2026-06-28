@@ -89,59 +89,76 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <Animated.View style={{ flex: 1, backgroundColor: '#0A0C10', alignItems: 'center', justifyContent: 'center', opacity: screenOpacity }}>
-      <StatusBar barStyle="light-content" backgroundColor="#0A0C10" />
+    <Animated.View style={{ flex: 1, backgroundColor: '#0D1117', alignItems: 'center', justifyContent: 'center', opacity: screenOpacity }}>
+      <StatusBar barStyle="light-content" backgroundColor="#0D1117" />
+      <LinearGradient colors={['#00C6FF15', 'transparent', '#FFD60A10']} style={StyleSheet.absoluteFill} />
 
-      {/* Logo */}
+      {/* Decorative Glow Orbs */}
+      <View style={{ position: 'absolute', top: '20%', left: '-20%', width: 300, height: 300, borderRadius: 150, backgroundColor: '#00C6FF', opacity: 0.15, filter: 'blur(60px)' }} />
+      <View style={{ position: 'absolute', bottom: '15%', right: '-30%', width: 350, height: 350, borderRadius: 175, backgroundColor: '#32D74B', opacity: 0.1, filter: 'blur(70px)' }} />
+
+      {/* Logo Container with Glassmorphism */}
       <Animated.View style={{
         transform: [{ scale: logoScale }],
         opacity: logoOpacity,
-        marginBottom: 28,
+        marginBottom: 32,
         alignItems: 'center',
+        padding: 24,
+        borderRadius: 40,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.08)',
+        shadowColor: '#00C6FF',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 30,
+        elevation: 15,
       }}>
         <Image
           source={require('./assets/app_icon.jpg')}
-          style={{ width: 120, height: 120, borderRadius: 28 }}
-          resizeMode="contain"
+          style={{ width: 110, height: 110, borderRadius: 28 }}
+          resizeMode="cover"
         />
       </Animated.View>
 
       {/* App name */}
       <Animated.Text style={{
         color: '#FFFFFF',
-        fontSize: 36,
+        fontSize: 42,
         fontWeight: '900',
-        letterSpacing: -1,
+        letterSpacing: -1.5,
         opacity: textOpacity,
-        marginBottom: 8,
+        marginBottom: 6,
+        textShadowColor: 'rgba(0, 198, 255, 0.4)',
+        textShadowOffset: { width: 0, height: 4 },
+        textShadowRadius: 15,
       }}>
         RunQuest
       </Animated.Text>
 
       {/* Tagline */}
       <Animated.Text style={{
-        color: 'rgba(255,255,255,0.45)',
-        fontSize: 14,
-        fontWeight: '500',
-        letterSpacing: 2,
+        color: '#00C6FF',
+        fontSize: 13,
+        fontWeight: '800',
+        letterSpacing: 4,
         opacity: taglineOpacity,
-        marginBottom: 60,
+        marginBottom: 80,
         textTransform: 'uppercase',
       }}>
         Run · Claim · Conquer
       </Animated.Text>
 
-      {/* Loading indicator — thin bar using opacity pulse (width not supported by native driver) */}
-      <View style={{ position: 'absolute', bottom: 60, left: 60, right: 60 }}>
-        <View style={{ height: 2, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 1, overflow: 'hidden' }}>
-          <Animated.View style={{
-            height: '100%',
-            width: '100%',
-            backgroundColor: '#00C6FF',
-            borderRadius: 1,
-            opacity: dotAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 1, 0.3] }),
-          }} />
-        </View>
+      {/* Premium Loading Bar */}
+      <View style={{ position: 'absolute', bottom: 70, width: 180, height: 4, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2, overflow: 'hidden' }}>
+        <Animated.View style={{
+          height: '100%',
+          width: '100%',
+          borderRadius: 2,
+          opacity: dotAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 1, 0.4] }),
+        }}>
+          <LinearGradient colors={['#00C6FF', '#32D74B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+        </Animated.View>
       </View>
 
       {/* Hidden trigger — calls onDone after minimum display time */}
@@ -198,7 +215,16 @@ function MainTabs() {
           <Tab.Screen name="Run"         component={RunScreen} />
           <Tab.Screen name="Territories" component={TerritoriesScreen} />
           <Tab.Screen name="Settings"    component={SettingsScreen} />
-          <Tab.Screen name="Profile"     component={ProfileStackNavigator} />
+          <Tab.Screen 
+            name="Profile"     
+            component={ProfileStackNavigator} 
+            listeners={({ navigation }) => ({
+              tabPress: (e) => {
+                e.preventDefault();
+                navigation.navigate('Profile', { screen: 'ProfileMain' });
+              },
+            })}
+          />
         </Tab.Navigator>
       </View>
     </TerritoriesProvider>

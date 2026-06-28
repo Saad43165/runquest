@@ -64,13 +64,16 @@ function Row({ label, desc, icon, color, children, last }: {
   const { T, themeName } = useTheme();
   const isLight = themeName === 'light';
   return (
-    <View style={[styles.row, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: T.border }]}>
-      <View style={[styles.rowIcon, { backgroundColor: color + '18' }]}>
-        <Ionicons name={icon as any} size={19} color={color} />
-      </View>
-      <View style={{ flex: 1, marginRight: 10 }}>
+    <View style={[styles.row, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: isLight ? '#00000015' : T.border }]}>
+      <LinearGradient 
+        colors={[color + '30', color + '15']} 
+        style={[styles.rowIcon, { borderColor: color + '40', borderWidth: 1 }]}
+      >
+        <Ionicons name={icon as any} size={20} color={color} />
+      </LinearGradient>
+      <View style={{ flex: 1, marginRight: 12, marginLeft: 2 }}>
         <Text style={[styles.rowLabel, { color: isLight ? '#000' : T.white }]}>{label}</Text>
-        {desc ? <Text style={[styles.rowDesc, { color: T.text }]}>{desc}</Text> : null}
+        {desc ? <Text style={[styles.rowDesc, { color: isLight ? '#666' : '#999' }]}>{desc}</Text> : null}
       </View>
       {children}
     </View>
@@ -81,7 +84,12 @@ function Card({ children }: { children: React.ReactNode }) {
   const { T, themeName } = useTheme();
   const isLight = themeName === 'light';
   return (
-    <View style={[styles.card, { backgroundColor: isLight ? '#FFF' : T.card, borderColor: T.border }]}>
+    <View style={[styles.card, { 
+      backgroundColor: isLight ? '#FFF' : T.card, 
+      borderColor: isLight ? '#00000010' : T.border,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 
+    }]}>
+      {!isLight && <LinearGradient colors={['rgba(255,255,255,0.03)', 'transparent']} style={StyleSheet.absoluteFill} />}
       {children}
     </View>
   );
@@ -1321,10 +1329,10 @@ const styles = StyleSheet.create({
   tabContent: { paddingHorizontal: 16, paddingBottom: 120, paddingTop: 8 },
   sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 8, marginTop: 16, paddingHorizontal: 4 },
   card: { borderRadius: 20, borderWidth: 1, overflow: 'hidden', marginBottom: 4 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 14, gap: 12 },
-  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  rowLabel: { fontSize: 15, fontWeight: '700' },
-  rowDesc: { fontSize: 11, marginTop: 1, opacity: 0.6 },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 14 },
+  rowIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rowLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.3 },
+  rowDesc: { fontSize: 12, marginTop: 2, lineHeight: 16 },
   themeRow: { flexDirection: 'row', gap: 10, marginBottom: 4 },
   themeCard: { flex: 1, borderRadius: 16, padding: 12, alignItems: 'center', gap: 6, position: 'relative', minHeight: 80, justifyContent: 'center' },
   themeLabel: { fontSize: 11, fontWeight: '800' },
