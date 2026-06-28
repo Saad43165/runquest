@@ -270,8 +270,12 @@ function AppIdentityDemo({ accentColor }: { accentColor: string }) {
   const pulse2 = useRef(new Animated.Value(1)).current;
   const gpsSignal = useRef(new Animated.Value(0)).current;
 
+  // Warrior spawn animations
+  const warriorScale = useRef(new Animated.Value(0)).current;
+  const warriorOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    // Zones fade+grow in sequence — use opacity + width/height via non-native
+    // Zones fade+grow in sequence
     Animated.sequence([
       Animated.delay(300),
       Animated.timing(zone1, { toValue: 1, duration: 600, useNativeDriver: false }),
@@ -281,6 +285,15 @@ function AppIdentityDemo({ accentColor }: { accentColor: string }) {
       Animated.timing(zone3, { toValue: 1, duration: 500, useNativeDriver: false }),
       Animated.delay(80),
       Animated.timing(zone4, { toValue: 1, duration: 480, useNativeDriver: false }),
+    ]).start();
+
+    // Warrior spawns cinematically
+    Animated.sequence([
+      Animated.delay(800),
+      Animated.parallel([
+        Animated.spring(warriorScale, { toValue: 1, tension: 70, friction: 6, useNativeDriver: true }),
+        Animated.timing(warriorOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ]),
     ]).start();
 
     Animated.loop(Animated.timing(runner1, { toValue: 1, duration: 3200, useNativeDriver: false })).start();
@@ -296,7 +309,6 @@ function AppIdentityDemo({ accentColor }: { accentColor: string }) {
       Animated.timing(pulse2, { toValue: 1, duration: 900, useNativeDriver: false }),
     ])).start();
 
-    // GPS blink — non-native (same driver as zones)
     Animated.loop(Animated.sequence([
       Animated.timing(gpsSignal, { toValue: 1, duration: 500, useNativeDriver: false }),
       Animated.timing(gpsSignal, { toValue: 0.2, duration: 500, useNativeDriver: false }),
@@ -308,7 +320,6 @@ function AppIdentityDemo({ accentColor }: { accentColor: string }) {
   const r2x = runner2.interpolate({ inputRange: [0, 0.5, 1], outputRange: [MAP_W * 0.58, MAP_W * 0.82, MAP_W * 0.58] });
   const r2y = runner2.interpolate({ inputRange: [0, 0.5, 1], outputRange: [MAP_H * 0.58, MAP_H * 0.72, MAP_H * 0.58] });
 
-  // Zone sizes animate from 0 to full — gives real "expanding" feel
   const z1w = zone1.interpolate({ inputRange: [0, 1], outputRange: [0, MAP_W * 0.32] });
   const z1h = zone1.interpolate({ inputRange: [0, 1], outputRange: [0, MAP_H * 0.44] });
   const z2w = zone2.interpolate({ inputRange: [0, 1], outputRange: [0, MAP_W * 0.26] });
@@ -349,6 +360,38 @@ function AppIdentityDemo({ accentColor }: { accentColor: string }) {
       <Animated.View style={{ position: 'absolute', transform: [{ translateX: Animated.subtract(r2x, new Animated.Value(6)) }, { translateY: Animated.subtract(r2y, new Animated.Value(6)) }] }}>
         <Animated.View style={{ position: 'absolute', top: -6, left: -6, width: 24, height: 24, borderRadius: 12, backgroundColor: '#FF6B3535', transform: [{ scale: pulse2 }] }} />
         <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#FF6B35', borderWidth: 2, borderColor: '#FFF' }} />
+      </Animated.View>
+
+      {/* Animated Warrior Spawner Badge */}
+      <Animated.View style={{
+        position: 'absolute',
+        left: MAP_W / 2 - 24,
+        top: MAP_H / 2 - 24,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#080E1A',
+        borderWidth: 2,
+        borderColor: accentColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: warriorOpacity,
+        transform: [{ scale: warriorScale }],
+        shadowColor: accentColor,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 10,
+        elevation: 6,
+      }}>
+        <Animated.View style={{
+          position: 'absolute',
+          top: -4, left: -4, right: -4, bottom: -4,
+          borderRadius: 28,
+          borderWidth: 1.5,
+          borderColor: accentColor + '40',
+          transform: [{ scale: pulse1 }]
+        }} />
+        <Ionicons name="shield-half" size={22} color={accentColor} />
       </Animated.View>
 
       <Animated.View style={{ position: 'absolute', top: 9, right: 11, flexDirection: 'row', alignItems: 'center', gap: 4, opacity: gpsSignal }}>

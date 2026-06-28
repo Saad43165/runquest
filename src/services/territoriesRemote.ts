@@ -6,8 +6,22 @@ import { toTurfPolygon, cleanAndSimplifyPath } from '../shared/territoryutils';
 import { union, difference, intersect, area, featureCollection } from '@turf/turf';
 import { getUserTeam } from './teamsService';
 import { NotificationService } from './notificationService';
+import { getPremiumStatus } from './premiumService';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+const TWENTY_ONE_DAYS_MS = 21 * 24 * 60 * 60 * 1000;
+
+function getExpiryDuration(): number {
+  const status = getPremiumStatus();
+  if (!status.isPremium) return SEVEN_DAYS_MS;
+  if (status.tier === 'basic') return TEN_DAYS_MS;
+  if (status.tier === 'pro') return FOURTEEN_DAYS_MS;
+  if (status.tier === 'elite') return TWENTY_ONE_DAYS_MS;
+  return TEN_DAYS_MS;
+}
+
 // Keep this in sync with RunScreen UI copy ("Minimum 100m² required")
 const MIN_AREA_SQ_METERS = 100;
 
@@ -171,9 +185,26 @@ function computeIntersectionPolygon(newPath: LatLng[], existingPolygon: LatLng[]
     const polyA = toTurfPolygon(newPath);
     const polyB = toTurfPolygon(existingPolygon);
     const intersection = intersect(featureCollection([polyA, polyB])) as any;
-    if (!intersection || intersection.geometry.type !== 'Polygon') return null;
-    return (intersection.geometry.coordinates[0] as number[][])
-      .map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+    if (!intersection) return null;
+    if (intersection.geometry.type === 'Polygon') {
+      return (intersection.geometry.coordinates[0] as number[][])
+        .map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+    } else if (intersection.geometry.type === 'MultiPolygon') {
+      let maxArea = 0;
+      let largestCoords: number[][] = [];
+      const coordsList = intersection.geometry.coordinates as number[][][][];
+      for (const coords of coordsList) {
+        const areaVal = area({ type: 'Feature', geometry: { type: 'Polygon', coordinates: coords }, properties: {} });
+        if (areaVal > maxArea) {
+          maxArea = areaVal;
+          largestCoords = coords[0];
+        }
+      }
+      if (largestCoords.length >= 3) {
+        return largestCoords.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -186,11 +217,58 @@ function computeDifferencePolygon(existingPolygon: LatLng[], newPath: LatLng[]):
     const polyA = toTurfPolygon(existingPolygon);
     const polyB = toTurfPolygon(newPath);
     const diff = difference(featureCollection([polyA, polyB])) as any;
-    if (!diff || diff.geometry.type !== 'Polygon') return null;
-    return (diff.geometry.coordinates[0] as number[][])
-      .map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+    if (!diff) return null;
+    if (diff.geometry.type === 'Polygon') {
+      return (diff.geometry.coordinates[0] as number[][])
+        .map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+    } else if (diff.geometry.type === 'MultiPolygon') {
+      let maxArea = 0;
+      let largestCoords: number[][] = [];
+      const coordsList = diff.geometry.coordinates as number[][][][];
+      for (const coords of coordsList) {
+        const areaVal = area({ type: 'Feature', geometry: { type: 'Polygon', coordinates: coords }, properties: {} });
+        if (areaVal > maxArea) {
+          maxArea = areaVal;
+          largestCoords = coords[0];
+        }
+      }
+      if (largestCoords.length >= 3) {
+        return largestCoords.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+      }
+    }
+    return null;
   } catch {
     return null;
+  }
+}
+
+/** Returns all resulting polygons from existingPolygon minus newPath as LatLng[][]. */
+function computeDifferencePolygons(existingPolygon: LatLng[], newPath: LatLng[]): LatLng[][] {
+  try {
+    if (existingPolygon.length < 3 || newPath.length < 3) return [];
+    const polyA = toTurfPolygon(existingPolygon);
+    const polyB = toTurfPolygon(newPath);
+    const diff = difference(featureCollection([polyA, polyB])) as any;
+    if (!diff) return [];
+    
+    const results: LatLng[][] = [];
+    if (diff.geometry.type === 'Polygon') {
+      const coords = diff.geometry.coordinates[0] as number[][];
+      if (coords.length >= 3) {
+        results.push(coords.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
+      }
+    } else if (diff.geometry.type === 'MultiPolygon') {
+      const coordsList = diff.geometry.coordinates as number[][][][];
+      for (const coords of coordsList) {
+        const ring = coords[0];
+        if (ring.length >= 3) {
+          results.push(ring.map(([lng, lat]) => ({ latitude: lat, longitude: lng })));
+        }
+      }
+    }
+    return results;
+  } catch {
+    return [];
   }
 }
 
@@ -201,9 +279,26 @@ function computeUnionPolygon(polyA: LatLng[], polyB: LatLng[]): LatLng[] | null 
     const turfA = toTurfPolygon(polyA);
     const turfB = toTurfPolygon(polyB);
     const merged = union(featureCollection([turfA, turfB])) as any;
-    if (!merged || merged.geometry.type !== 'Polygon') return null;
-    return (merged.geometry.coordinates[0] as number[][])
-      .map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+    if (!merged) return null;
+    if (merged.geometry.type === 'Polygon') {
+      return (merged.geometry.coordinates[0] as number[][])
+        .map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+    } else if (merged.geometry.type === 'MultiPolygon') {
+      let maxArea = 0;
+      let largestCoords: number[][] = [];
+      const coordsList = merged.geometry.coordinates as number[][][][];
+      for (const coords of coordsList) {
+        const areaVal = area({ type: 'Feature', geometry: { type: 'Polygon', coordinates: coords }, properties: {} });
+        if (areaVal > maxArea) {
+          maxArea = areaVal;
+          largestCoords = coords[0];
+        }
+      }
+      if (largestCoords.length >= 3) {
+        return largestCoords.map(([lng, lat]) => ({ latitude: lat, longitude: lng }));
+      }
+    }
+    return null;
   } catch {
     return null;
   }
@@ -363,10 +458,12 @@ export async function claimAndConquerRemote(
       const stolenArea = polygonAreaSqMeters(intersectionPoly);
       if (stolenArea < 10) continue;
 
-      const remainingPoly = computeDifferencePolygon(t.polygon, path);
+      const remainingPolys = computeDifferencePolygons(t.polygon, path);
+      // Filter out pieces that are too small
+      const validRemains = remainingPolys.filter(p => polygonAreaSqMeters(p) >= MIN_AREA_SQ_METERS);
 
-      if (!remainingPoly || remainingPoly.length < 3 || polygonAreaSqMeters(remainingPoly) < MIN_AREA_SQ_METERS) {
-        // Remaining piece too small — treat as full conquest
+      if (validRemains.length === 0) {
+        // Remaining pieces are all too small — treat as full conquest
         conqueredResult.push({
           id: t.id,
           name: t.name,
@@ -387,16 +484,47 @@ export async function claimAndConquerRemote(
           }
         } catch {}
       } else {
-        // Shrink enemy territory to remaining polygon
-        const rCentLat = remainingPoly.reduce((s, p) => s + p.latitude, 0) / remainingPoly.length;
-        const rCentLng = remainingPoly.reduce((s, p) => s + p.longitude, 0) / remainingPoly.length;
+        // Sort remaining pieces by area descending
+        const sortedRemains = validRemains.sort((a, b) => polygonAreaSqMeters(b) - polygonAreaSqMeters(a));
+        const largestRemaining = sortedRemains[0];
+
+        // Update the original territory document with the largest remaining piece
+        const rCentLat = largestRemaining.reduce((s, p) => s + p.latitude, 0) / largestRemaining.length;
+        const rCentLng = largestRemaining.reduce((s, p) => s + p.longitude, 0) / largestRemaining.length;
         batch.update(doc(db, 'territories', t.id), {
-          polygon: remainingPoly,
-          areaSqMeters: Math.round(polygonAreaSqMeters(remainingPoly)),
-          perimeterMeters: Math.round(pathPerimeter(remainingPoly)),
+          polygon: largestRemaining,
+          areaSqMeters: Math.round(polygonAreaSqMeters(largestRemaining)),
+          perimeterMeters: Math.round(pathPerimeter(largestRemaining)),
           centroidLat: rCentLat,
           centroidLng: rCentLng,
         });
+
+        // For all other split pieces, create new territories for the enemy
+        for (let idx = 1; idx < sortedRemains.length; idx++) {
+          const splitPoly = sortedRemains[idx];
+          const sCentLat = splitPoly.reduce((s, p) => s + p.latitude, 0) / splitPoly.length;
+          const sCentLng = splitPoly.reduce((s, p) => s + p.longitude, 0) / splitPoly.length;
+          
+          const newDocRef = doc(collection(db, 'territories'));
+          
+          batch.set(newDocRef, {
+            name: `${t.name} (Split)`,
+            ownerId: t.ownerId,
+            ownerDisplayName: t.ownerDisplayName,
+            ownerPhotoURL: t.ownerPhotoURL || null,
+            ownerUsername: t.ownerUsername || t.ownerDisplayName || 'Unknown Warrior',
+            polygon: splitPoly,
+            perimeterMeters: Math.round(pathPerimeter(splitPoly)),
+            areaSqMeters: Math.round(polygonAreaSqMeters(splitPoly)),
+            color: t.color,
+            centroidLat: sCentLat,
+            centroidLng: sCentLng,
+            expiresAt: t.expiresAt || (Date.now() + getExpiryDuration()),
+            history: t.history || [],
+            createdAt: serverTimestamp(),
+            ...(t.teamId ? { teamId: t.teamId, teamColor: t.teamColor } : {}),
+          });
+        }
 
         // Add stolen slice to attacker's final polygon
         const expanded = computeUnionPolygon(finalPolygon, intersectionPoly);
@@ -428,7 +556,7 @@ export async function claimAndConquerRemote(
       color: territoryColor,
       centroidLat: finalCentLat,
       centroidLng: finalCentLng,
-      expiresAt: Date.now() + SEVEN_DAYS_MS,
+      expiresAt: Date.now() + getExpiryDuration(),
       history: inheritedHistory,
       ...(teamId ? { teamId, teamColor } : {}),
     };
@@ -490,7 +618,7 @@ export async function claimAndConquerRemote(
         polygon: finalPolygon,
         perimeterMeters: Math.round(finalPerimeter),
         areaSqMeters: Math.round(finalArea),
-        expiresAt: Date.now() + SEVEN_DAYS_MS,
+        expiresAt: Date.now() + getExpiryDuration(),
         history: inheritedHistory,
         ...(teamId ? { teamId, teamColor } : {}),
       },
@@ -604,7 +732,7 @@ export async function defendTerritoryRemote(id: string): Promise<boolean> {
       return false;
     }
     await updateDoc(doc(db, 'territories', id), {
-      expiresAt: Date.now() + SEVEN_DAYS_MS,
+      expiresAt: Date.now() + getExpiryDuration(),
       lastDefendedAt: Date.now(),
     });
     return true;

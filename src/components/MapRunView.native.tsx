@@ -110,6 +110,7 @@ type Props = {
   avatarIndex?: number;
   pathStyle?: 'solid' | 'dashed' | 'glow';
   pathColor?: string;
+  items?: { id: string; type: 'gem' | 'shield' | 'boost' | 'chest'; latitude: number; longitude: number; collected: boolean }[];
 };
 
 // ─── Build MapLibre HTML (used for ALL tile styles) ──────────────────────────
@@ -131,8 +132,10 @@ function buildLeafletHTML(
   avatarIndex: number,
   pathStyle: string,
   pathColor: string,
+  items: { id: string; type: 'gem' | 'shield' | 'boost' | 'chest'; latitude: number; longitude: number; collected: boolean }[],
 ): string {
   const pathJSON = JSON.stringify(path.map(p => [p.latitude, p.longitude]));
+  const itemsJSON = JSON.stringify(items || []);
   const polygonsJSON = JSON.stringify(
     polygons.map(p => ({
       points: p.points.map(pp => [pp.latitude, pp.longitude]),
@@ -192,6 +195,13 @@ ${maplibreScript}
   html,body,#map{width:100%;height:100%;background:${bgColor}}
   .maplibregl-ctrl-attrib,.maplibregl-ctrl-logo{display:none!important}
   .maplibregl-ctrl-bottom-left{display:none!important}
+  @keyframes bounceLoot {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  .loot-marker-container {
+    animation: bounceLoot 2s infinite ease-in-out;
+  }
   #zoom-btns{
     position:fixed;left:16px;bottom:420px;
     display:flex;flex-direction:column;gap:8px;z-index:9999;
@@ -297,28 +307,68 @@ map.on('load', function() {
 // ── 16 warrior SVG personas ───────────────────────────────────────────────────
 // Each is a unique character — user picks one, others see it on the map
 var WARRIOR_SVGS = [
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#C8956C"/><rect x="16" y="8" width="16" height="9" rx="2" fill="#1A1A2E"/><rect x="16" y="13" width="16" height="4" fill="#00FF87" rx="1"/><circle cx="20" cy="12" r="2" fill="#00FF87"/><circle cx="28" cy="12" r="2" fill="#00FF87"/><rect x="15" y="21" width="18" height="22" rx="4" fill="#1A1A2E"/><rect x="15" y="21" width="18" height="5" fill="#00FF87" rx="2"/><rect x="7" y="22" width="8" height="17" rx="4" fill="#1A1A2E"/><rect x="33" y="22" width="8" height="17" rx="4" fill="#1A1A2E"/><rect x="16" y="43" width="7" height="18" rx="3" fill="#1A1A2E"/><rect x="25" y="43" width="7" height="18" rx="3" fill="#1A1A2E"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#E8C49A"/><rect x="14" y="7" width="20" height="11" rx="4" fill="#8A9BB0"/><rect x="16" y="9" width="16" height="6" rx="2" fill="#C0C0C0"/><circle cx="20" cy="12" r="1.5" fill="#1C2333"/><circle cx="28" cy="12" r="1.5" fill="#1C2333"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#8A9BB0"/><rect x="14" y="21" width="20" height="5" fill="#C0C0C0" rx="2"/><line x1="24" y1="26" x2="24" y2="44" stroke="#C0C0C0" stroke-width="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#8A9BB0"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#8A9BB0"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#6B7A8D"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#6B7A8D"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="14" r="8" fill="#D4A574"/><polygon points="24,1 16,15 32,15" fill="#6B2FA0"/><ellipse cx="24" cy="15" rx="11" ry="3" fill="#8B3FC0"/><circle cx="20" cy="14" r="1.5" fill="#BF5FFF"/><circle cx="28" cy="14" r="1.5" fill="#BF5FFF"/><path d="M14 22 Q24 19 34 22 L32 45 L16 45 Z" fill="#6B2FA0"/><rect x="14" y="22" width="20" height="5" fill="#BF5FFF" rx="2"/><rect x="6" y="23" width="8" height="18" rx="4" fill="#6B2FA0"/><rect x="34" y="23" width="8" height="18" rx="4" fill="#6B2FA0"/><rect x="17" y="45" width="6" height="17" rx="3" fill="#4A1A7A"/><rect x="25" y="45" width="6" height="17" rx="3" fill="#4A1A7A"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="8" fill="#C8956C"/><ellipse cx="24" cy="9" rx="11" ry="5" fill="#2D5A27"/><rect x="13" y="9" width="22" height="5" fill="#1A3A15" rx="2"/><circle cx="20" cy="13" r="1.5" fill="#1A3A15"/><circle cx="28" cy="13" r="1.5" fill="#1A3A15"/><rect x="15" y="20" width="18" height="23" rx="3" fill="#2D5A27"/><rect x="15" y="20" width="18" height="5" fill="#32D74B" rx="2"/><rect x="7" y="21" width="8" height="17" rx="4" fill="#2D5A27"/><rect x="33" y="21" width="8" height="17" rx="4" fill="#2D5A27"/><rect x="16" y="43" width="7" height="19" rx="3" fill="#1A3A15"/><rect x="25" y="43" width="7" height="19" rx="3" fill="#1A3A15"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#D4845A"/><rect x="14" y="7" width="20" height="11" rx="3" fill="#8B0000"/><circle cx="20" cy="12" r="2" fill="#FF453A"/><circle cx="28" cy="12" r="2" fill="#FF453A"/><path d="M20 16 L24 18 L28 16" stroke="#FF453A" stroke-width="1.5" fill="none"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#8B0000"/><rect x="14" y="21" width="20" height="5" fill="#FF453A" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#8B0000"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#8B0000"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#6B0000"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#6B0000"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#1A2A3E"/><rect x="14" y="7" width="20" height="12" rx="4" fill="#0D1F35"/><rect x="15" y="9" width="18" height="7" rx="3" fill="#00C6FF" opacity="0.5"/><circle cx="20" cy="12" r="2" fill="#00C6FF"/><circle cx="28" cy="12" r="2" fill="#00C6FF"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#0D1F35"/><line x1="14" y1="27" x2="34" y2="27" stroke="#00C6FF" stroke-width="1.5"/><line x1="14" y1="33" x2="34" y2="33" stroke="#00C6FF" stroke-width="1"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#0D1F35"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#0D1F35"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#0A1828"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#0A1828"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#C8956C"/><path d="M13 9 L24 3 L35 9 L33 16 L15 16 Z" fill="#2A1800"/><rect x="20" y="10" width="8" height="3" rx="1" fill="#FFD60A"/><circle cx="20" cy="13" r="1.5" fill="#2A1800"/><rect x="22" y="11" width="7" height="5" rx="1" fill="#1A1000"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#5C3A1E"/><rect x="14" y="21" width="20" height="5" fill="#8B5E3C" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#5C3A1E"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#5C3A1E"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#3A2010"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#3A2010"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="24" cy="13" rx="11" ry="12" fill="#D0D8F0" opacity="0.95"/><circle cx="19" cy="12" r="3" fill="#1A1A3E"/><circle cx="29" cy="12" r="3" fill="#1A1A3E"/><circle cx="19" cy="12" r="1.5" fill="#6080FF"/><circle cx="29" cy="12" r="1.5" fill="#6080FF"/><path d="M13 22 Q24 18 35 22 L35 52 Q31 48 24 52 Q17 48 13 52 Z" fill="#D0D8F0" opacity="0.9"/><path d="M13 22 Q24 18 35 22 L35 27 Q24 23 13 27 Z" fill="#A0B0D0" opacity="0.9"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#C8956C"/><rect x="21" y="3" width="6" height="9" rx="3" fill="#1A0A0A"/><rect x="14" y="9" width="20" height="9" rx="2" fill="#1A0A0A"/><circle cx="20" cy="13" r="1.5" fill="#FF6B35"/><circle cx="28" cy="13" r="1.5" fill="#FF6B35"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#1A0A0A"/><rect x="14" y="21" width="20" height="5" fill="#FF6B35" rx="2"/><line x1="24" y1="26" x2="24" y2="44" stroke="#FF6B35" stroke-width="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#1A0A0A"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#1A0A0A"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#0A0505"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#0A0505"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#D4A574"/><rect x="14" y="7" width="20" height="11" rx="3" fill="#2A2A55"/><path d="M10 11 L14 7" stroke="#FFD60A" stroke-width="3" stroke-linecap="round"/><path d="M38 11 L34 7" stroke="#FFD60A" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="13" r="1.5" fill="#2A2A55"/><circle cx="28" cy="13" r="1.5" fill="#2A2A55"/><path d="M18 17 Q24 20 30 17" fill="#8B6914" stroke="#8B6914" stroke-width="1"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#2A2A55"/><rect x="14" y="21" width="20" height="5" fill="#FFD60A" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#2A2A55"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#2A2A55"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#1A1A3A"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#1A1A3A"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="11" fill="#E8E8F0"/><circle cx="24" cy="12" r="8" fill="#1A1A3E"/><rect x="17" y="8" width="14" height="9" rx="4" fill="#00C6FF" opacity="0.5"/><circle cx="20" cy="12" r="1.5" fill="#00C6FF"/><circle cx="28" cy="12" r="1.5" fill="#00C6FF"/><rect x="13" y="23" width="22" height="22" rx="5" fill="#E8E8F0"/><rect x="18" y="28" width="12" height="8" rx="2" fill="#C0C8D8"/><rect x="5" y="24" width="8" height="18" rx="4" fill="#E8E8F0"/><rect x="35" y="24" width="8" height="18" rx="4" fill="#E8E8F0"/><rect x="16" y="45" width="7" height="17" rx="3" fill="#C0C8D8"/><rect x="25" y="45" width="7" height="17" rx="3" fill="#C0C8D8"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="15" r="8" fill="#D4A574"/><polygon points="24,1 16,16 32,16" fill="#4A0080"/><ellipse cx="24" cy="16" rx="12" ry="3" fill="#6B00B0"/><circle cx="20" cy="15" r="2" fill="#BF5FFF"/><circle cx="28" cy="15" r="2" fill="#BF5FFF"/><path d="M14 23 Q24 20 34 23 L32 45 L16 45 Z" fill="#4A0080"/><rect x="14" y="23" width="20" height="5" fill="#BF5FFF" rx="2"/><rect x="6" y="24" width="8" height="18" rx="4" fill="#4A0080"/><rect x="34" y="24" width="8" height="18" rx="4" fill="#4A0080"/><rect x="17" y="45" width="6" height="17" rx="3" fill="#2A0050"/><rect x="25" y="45" width="6" height="17" rx="3" fill="#2A0050"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="8" fill="#C8956C"/><path d="M13 8 Q24 3 35 8 L33 17 L15 17 Z" fill="#1A4A1A"/><circle cx="20" cy="13" r="1.5" fill="#32D74B"/><circle cx="28" cy="13" r="1.5" fill="#32D74B"/><rect x="15" y="20" width="18" height="23" rx="3" fill="#1A4A1A"/><rect x="15" y="20" width="18" height="5" fill="#32D74B" rx="2"/><rect x="7" y="21" width="8" height="17" rx="4" fill="#1A4A1A"/><rect x="33" y="21" width="8" height="17" rx="4" fill="#1A4A1A"/><path d="M40 8 Q46 16 40 24" stroke="#8B5E3C" stroke-width="2.5" fill="none"/><line x1="40" y1="8" x2="40" y2="24" stroke="#8B5E3C" stroke-width="1.5"/><rect x="17" y="43" width="6" height="19" rx="3" fill="#0A2A0A"/><rect x="25" y="43" width="6" height="19" rx="3" fill="#0A2A0A"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#D4A574"/><rect x="15" y="9" width="18" height="9" rx="2" fill="#5C3A00"/><circle cx="19" cy="12" r="3.5" fill="#FF9F0A" opacity="0.7"/><circle cx="29" cy="12" r="3.5" fill="#FF9F0A" opacity="0.7"/><circle cx="19" cy="12" r="1.5" fill="#1A0A00"/><circle cx="29" cy="12" r="1.5" fill="#1A0A00"/><path d="M14 21 Q24 18 34 21 L32 44 L16 44 Z" fill="#8B4500"/><rect x="14" y="21" width="20" height="5" fill="#FF9F0A" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#8B4500"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#8B4500"/><circle cx="40" cy="28" r="5" fill="#32D74B" opacity="0.9"/><rect x="17" y="44" width="6" height="18" rx="3" fill="#5C3A00"/><rect x="25" y="44" width="6" height="18" rx="3" fill="#5C3A00"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="4" r="5" fill="none" stroke="#FFD60A" stroke-width="2.5" opacity="0.9"/><circle cx="24" cy="13" r="8" fill="#E8C49A"/><rect x="14" y="8" width="20" height="10" rx="3" fill="#B8860B"/><circle cx="20" cy="13" r="1.5" fill="#1A1400"/><circle cx="28" cy="13" r="1.5" fill="#1A1400"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#B8860B"/><rect x="14" y="21" width="20" height="5" fill="#FFD60A" rx="2"/><line x1="24" y1="26" x2="24" y2="44" stroke="#FFD60A" stroke-width="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#B8860B"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#B8860B"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#8B6500"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#8B6500"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#B07850"/><path d="M13 9 Q24 4 35 9 L33 18 L15 18 Z" fill="#1A1A1A"/><circle cx="20" cy="13" r="1.5" fill="#888"/><circle cx="28" cy="13" r="1.5" fill="#888"/><path d="M14 21 Q24 18 34 21 L34 44 L14 44 Z" fill="#1A1A1A"/><rect x="14" y="21" width="20" height="5" fill="#444" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#1A1A1A"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#1A1A1A"/><line x1="8" y1="26" x2="12" y2="36" stroke="#AAA" stroke-width="2.5" stroke-linecap="round"/><line x1="40" y1="26" x2="36" y2="36" stroke="#AAA" stroke-width="2.5" stroke-linecap="round"/><rect x="17" y="44" width="6" height="18" rx="3" fill="#0A0A0A"/><rect x="25" y="44" width="6" height="18" rx="3" fill="#0A0A0A"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ninjaGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1A1A2E"/><stop offset="100%" stop-color="#0A0A15"/></linearGradient></defs><rect x="14" y="16" width="20" height="28" rx="6" fill="url(#ninjaGrad)" stroke="#00FF87" stroke-width="1.5"/><circle cx="24" cy="24" r="8" fill="#111"/><rect x="17" y="21" width="14" height="4" rx="2" fill="#00FF87"/><circle cx="21" cy="23" r="1" fill="#FFF"/><circle cx="27" cy="23" r="1" fill="#FFF"/><path d="M14 28 L34 28 L30 36 L18 36 Z" fill="#00FF87" opacity="0.8"/><path d="M10 32 C12 28, 14 28, 14 32 L11 46 C11 46, 9 46, 8 42 Z" fill="#1A1A2E"/><path d="M38 32 C36 28, 34 28, 34 32 L37 46 C37 46, 39 46, 40 42 Z" fill="#1A1A2E"/><line x1="12" y1="12" x2="18" y2="20" stroke="#00FF87" stroke-width="2.5" stroke-linecap="round"/><line x1="36" y1="12" x2="30" y2="20" stroke="#00FF87" stroke-width="2.5" stroke-linecap="round"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#0A0A15" stroke="#00FF87" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#0A0A15" stroke="#00FF87" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="knightGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#E2F5FA"/><stop offset="100%" stop-color="#8A9BB0"/></linearGradient></defs><rect x="14" y="16" width="20" height="28" rx="5" fill="url(#knightGrad)" stroke="#00C6FF" stroke-width="1.5"/><path d="M22 18 L26 18 L26 25 L31 25 L31 28 L17 28 L17 25 L22 25 Z" fill="#1A1A2E"/><line x1="24" y1="18" x2="24" y2="28" stroke="#00C6FF" stroke-width="1.5"/><path d="M24 16 C20 10, 28 6, 32 10 C32 10, 28 14, 24 16 Z" fill="#00C6FF"/><circle cx="12" cy="30" r="4.5" fill="#E2F5FA" stroke="#00C6FF" stroke-width="1"/><circle cx="36" cy="30" r="4.5" fill="#E2F5FA" stroke="#00C6FF" stroke-width="1"/><line x1="24" y1="32" x2="24" y2="42" stroke="#00C6FF" stroke-width="2"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#8A9BB0" stroke="#00C6FF" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#8A9BB0" stroke="#00C6FF" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mageGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8B3FC0"/><stop offset="100%" stop-color="#3A1A7A"/></linearGradient></defs><path d="M24 12 L14 26 L14 46 L34 46 L34 26 Z" fill="url(#mageGrad)" stroke="#BF5FFF" stroke-width="1.5"/><path d="M24 16 L17 26 L31 26 Z" fill="#0D0D1A"/><circle cx="21" cy="23" r="1.5" fill="#BF5FFF"/><circle cx="27" cy="23" r="1.5" fill="#BF5FFF"/><path d="M14 28 L24 34 L34 28" fill="none" stroke="#FFD60A" stroke-width="1.5"/><line x1="38" y1="12" x2="38" y2="52" stroke="#8B5E3C" stroke-width="2" stroke-linecap="round"/><circle cx="38" cy="8" r="5" fill="#BF5FFF" opacity="0.9"/><circle cx="38" cy="8" r="2.5" fill="#FFF"/><rect x="17" y="46" width="5" height="14" rx="2" fill="#3A1A7A"/><rect x="26" y="46" width="5" height="14" rx="2" fill="#3A1A7A"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="scoutGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2D5A27"/><stop offset="100%" stop-color="#142B11"/></linearGradient></defs><path d="M24 14 C15 14, 14 22, 14 26 L14 44 L34 44 L34 26 C34 22, 33 14, 24 14 Z" fill="url(#scoutGrad)" stroke="#32D74B" stroke-width="1.5"/><rect x="17" y="20" width="14" height="6" rx="3" fill="#111" stroke="#32D74B" stroke-width="1"/><circle cx="21" cy="23" r="1.5" fill="#32D74B"/><circle cx="27" cy="23" r="1.5" fill="#32D74B"/><path d="M14 28 L24 24 L34 28" fill="none" stroke="#32D74B" stroke-width="1.5"/><rect x="9" y="16" width="4" height="12" rx="1" fill="#FF9F0A" transform="rotate(-20,9,16)"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#142B11" stroke="#32D74B" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#142B11" stroke="#32D74B" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="bersGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF3B30"/><stop offset="100%" stop-color="#800A0A"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="url(#bersGrad)" stroke="#FF453A" stroke-width="1.5"/><path d="M14 20 Q8 12, 10 6 Q14 12, 15 20 Z" fill="#FFE066"/><path d="M34 20 Q40 12, 38 6 Q34 12, 33 20 Z" fill="#FFE066"/><polygon points="18,25 23,25 21,28" fill="#FF453A"/><polygon points="30,25 25,25 27,28" fill="#FF453A"/><line x1="20" y1="32" x2="28" y2="32" stroke="#FF453A" stroke-width="1.5"/><line x1="22" y1="30" x2="22" y2="34" stroke="#FF453A" stroke-width="1"/><line x1="26" y1="30" x2="26" y2="34" stroke="#FF453A" stroke-width="1"/><polygon points="10,28 6,24 12,32" fill="#FF453A"/><polygon points="38,28 42,24 36,32" fill="#FF453A"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#800A0A" stroke="#FF453A" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#800A0A" stroke="#FF453A" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00C6FF"/><stop offset="100%" stop-color="#0A1828"/></linearGradient></defs><rect x="14" y="16" width="20" height="28" rx="6" fill="url(#cyberGrad)" stroke="#00C6FF" stroke-width="1.5"/><rect x="16" y="21" width="16" height="7" rx="2" fill="#00C6FF" opacity="0.8"/><line x1="17" y1="24" x2="31" y2="24" stroke="#FFF" stroke-width="1.5"/><line x1="14" y1="22" x2="10" y2="16" stroke="#00C6FF" stroke-width="2"/><line x1="34" y1="22" x2="38" y2="16" stroke="#00C6FF" stroke-width="2"/><circle cx="24" cy="35" r="3" fill="none" stroke="#00C6FF" stroke-width="1.5"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#0A1828" stroke="#00C6FF" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#0A1828" stroke="#00C6FF" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pirateGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD60A"/><stop offset="100%" stop-color="#3A2D00"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="#1C1C1C" stroke="#FFD60A" stroke-width="1.5"/><circle cx="24" cy="24" r="8" fill="#F3D1B4"/><line x1="16" y1="20" x2="32" y2="26" stroke="#000" stroke-width="2.5"/><circle cx="22" cy="23" r="3.5" fill="#000"/><circle cx="27" cy="23" r="1.5" fill="#FFD60A"/><path d="M10 18 Q24 8, 38 18 Z" fill="#000" stroke="#FFD60A" stroke-width="1.5"/><circle cx="24" cy="14" r="2.5" fill="#FFD60A"/><rect x="21" y="34" width="6" height="4" fill="#FFD60A"/><path d="M10 32 Q6 36, 10 40" fill="none" stroke="#C0C0C0" stroke-width="2.5" stroke-linecap="round"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#1C1C1C" stroke="#FFD60A" stroke-width="1"/><line x1="29" y1="44" x2="29" y2="60" stroke="#8B5E3C" stroke-width="3" stroke-linecap="round"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ghostGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#E2F5FA"/><stop offset="100%" stop-color="#8A9BB0"/></linearGradient></defs><path d="M24 12 C14 12, 12 20, 12 28 C12 36, 14 44, 14 48 C18 46, 20 50, 24 48 C28 50, 30 46, 34 48 C34 44, 36 36, 36 28 C36 20, 34 12, 24 12 Z" fill="url(#ghostGrad)" opacity="0.85" stroke="#00C6FF" stroke-width="2"/><ellipse cx="20" cy="24" rx="2.5" ry="3.5" fill="#1C2333"/><ellipse cx="28" cy="24" rx="2.5" ry="3.5" fill="#1C2333"/><circle cx="20" cy="24" r="1" fill="#00C6FF"/><circle cx="28" cy="24" r="1" fill="#00C6FF"/><path d="M22 32 Q24 35, 26 32" stroke="#1C2333" stroke-width="1.5" fill="none"/><circle cx="10" cy="46" r="1.5" fill="#00C6FF" opacity="0.7"/><circle cx="38" cy="40" r="1" fill="#00C6FF" opacity="0.7"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="samGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF6B35"/><stop offset="100%" stop-color="#1A1008"/></linearGradient></defs><rect x="14" y="16" width="20" height="28" rx="4" fill="url(#samGrad)" stroke="#FF6B35" stroke-width="1.5"/><path d="M20 16 L24 8 L28 16" fill="none" stroke="#FFD60A" stroke-width="2.5" stroke-linecap="round"/><rect x="16" y="22" width="16" height="8" rx="2" fill="#1A1008" stroke="#FF6B35" stroke-width="1"/><circle cx="20" cy="25" r="1.5" fill="#FFD60A"/><circle cx="28" cy="25" r="1.5" fill="#FFD60A"/><line x1="12" y1="26" x2="12" y2="38" stroke="#FF6B35" stroke-width="3" stroke-linecap="round"/><line x1="36" y1="26" x2="36" y2="38" stroke="#FF6B35" stroke-width="3" stroke-linecap="round"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#1A1008" stroke="#FF6B35" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#1A1008" stroke="#FF6B35" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="vikGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD700"/><stop offset="100%" stop-color="#4A3B00"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="#333" stroke="#FFD700" stroke-width="1.5"/><path d="M14 18 Q24 10, 34 18 Z" fill="url(#vikGrad)" stroke="#FFF" stroke-width="1"/><line x1="24" y1="12" x2="24" y2="18" stroke="#FFF" stroke-width="1.5"/><path d="M14 16 Q8 10, 10 4 Q13 8, 15 16 Z" fill="#FFF"/><path d="M34 16 Q40 10, 38 4 Q35 8, 33 16 Z" fill="#FFF"/><path d="M16 26 L24 38 L32 26 Z" fill="#FF8C00"/><circle cx="20" cy="23" r="1.5" fill="#FFF"/><circle cx="28" cy="23" r="1.5" fill="#FFF"/><circle cx="38" cy="34" r="7" fill="#FFD700" stroke="#333" stroke-width="1.5"/><circle cx="38" cy="34" r="1.5" fill="#FFF"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#333" stroke="#FFD700" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#333" stroke="#FFD700" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="astroGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFFFFF"/><stop offset="100%" stop-color="#A0B0D0"/></linearGradient><linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00C6FF"/><stop offset="100%" stop-color="#FFD60A"/></linearGradient></defs><rect x="12" y="24" width="24" height="20" rx="6" fill="url(#astroGrad)" stroke="#A0B0D0" stroke-width="1.5"/><rect x="10" y="26" width="4" height="14" rx="1" fill="#FF3B30"/><circle cx="24" cy="16" r="10" fill="#FFF" stroke="#A0B0D0" stroke-width="1.5"/><ellipse cx="24" cy="16" rx="8" ry="6" fill="url(#visorGrad)"/><circle cx="21" cy="14" r="1.5" fill="#FFF" opacity="0.8"/><rect x="18" y="28" width="12" height="6" rx="1" fill="#1A1A3E"/><circle cx="21" cy="31" r="1" fill="#32D74B"/><circle cx="24" cy="31" r="1" fill="#FF3B30"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#FFF" stroke="#A0B0D0" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#FFF" stroke="#A0B0D0" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="witchGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#6B00B0"/><stop offset="100%" stop-color="#2A0050"/></linearGradient></defs><path d="M24 16 L14 30 L14 46 L34 46 L34 30 Z" fill="url(#witchGrad)" stroke="#BF5FFF" stroke-width="1.5"/><path d="M24 2 Q18 10, 10 16 L38 16 Q30 10, 24 2 Z" fill="#1C1A27" stroke="#BF5FFF" stroke-width="1.5"/><ellipse cx="24" cy="16" rx="15" ry="3" fill="#1C1A27" stroke="#BF5FFF" stroke-width="1.5"/><circle cx="24" cy="22" r="6" fill="#FFDBB5"/><circle cx="22" cy="21" r="1" fill="#1C1A27"/><circle cx="26" cy="21" r="1" fill="#1C1A27"/><path d="M22 25 Q24 27, 26 25" stroke="#1C1A27" stroke-width="1" fill="none"/><rect x="6" y="28" width="6" height="10" rx="2" fill="#BF5FFF" stroke="#FFF" stroke-width="1"/><circle cx="9" cy="26" r="2" fill="#FFF"/><rect x="17" y="46" width="5" height="14" rx="2" fill="#2A0050"/><rect x="26" y="46" width="5" height="14" rx="2" fill="#2A0050"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1A4A1A"/><stop offset="100%" stop-color="#0A2A0A"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="url(#archGrad)" stroke="#32D74B" stroke-width="1.5"/><path d="M24 12 C16 12, 15 18, 15 22 C15 28, 33 28, 33 22 C33 18, 32 12, 24 12 Z" fill="#1A4A1A" stroke="#32D74B" stroke-width="1"/><circle cx="24" cy="21" r="6" fill="#E8C49A"/><rect x="18" y="20" width="12" height="4" rx="1.5" fill="#1A4A1A"/><circle cx="21" cy="22" r="1" fill="#32D74B"/><circle cx="27" cy="22" r="1" fill="#32D74B"/><path d="M40 8 Q46 22, 40 36" fill="none" stroke="#FF9F0A" stroke-width="2.5" stroke-linecap="round"/><line x1="40" y1="8" x2="40" y2="36" stroke="#FFF" stroke-width="1" opacity="0.6"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#0A2A0A" stroke="#32D74B" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#0A2A0A" stroke="#32D74B" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="alcGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF9F0A"/><stop offset="100%" stop-color="#5C3A00"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="url(#alcGrad)" stroke="#FF9F0A" stroke-width="1.5"/><path d="M24 12 C16 12, 15 18, 15 22 C15 28, 33 28, 33 22 C33 18, 32 12, 24 12 Z" fill="#5C3A00" stroke="#FF9F0A" stroke-width="1"/><circle cx="24" cy="21" r="6" fill="#111"/><circle cx="21" cy="20" r="2.5" fill="none" stroke="#FF9F0A" stroke-width="1.5"/><circle cx="27" cy="20" r="2.5" fill="none" stroke="#FF9F0A" stroke-width="1.5"/><path d="M23 23 L25 23 L24 26 Z" fill="#FF9F0A"/><polygon points="6,34 12,34 9,28" fill="#32D74B" stroke="#FFF" stroke-width="1"/><circle cx="9" cy="35" r="3.5" fill="#32D74B" opacity="0.9"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#5C3A00" stroke="#FF9F0A" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#5C3A00" stroke="#FF9F0A" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="palGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFD60A"/><stop offset="100%" stop-color="#8B6500"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="url(#palGrad)" stroke="#FFF" stroke-width="2"/><path d="M21 26 L27 26 L24 32 Z" fill="#FFF"/><circle cx="24" cy="13" r="10" fill="none" stroke="#FFD60A" stroke-width="2.5" opacity="0.75"/><path d="M14 18 Q24 10, 34 18 Z" fill="#FFF" stroke="#FFD60A" stroke-width="1.5"/><path d="M22 18 L26 18 L26 25 L18 25 L18 27 L30 27 L30 25 L26 25 Z" fill="#FFD60A"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#8B6500" stroke="#FFD60A" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#8B6500" stroke="#FFD60A" stroke-width="1"/></svg>',
+  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="rogGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1F1F2E"/><stop offset="100%" stop-color="#0A0A0F"/></linearGradient></defs><rect x="14" y="18" width="20" height="26" rx="4" fill="url(#rogGrad)" stroke="#888899" stroke-width="1.5"/><path d="M24 12 C16 12, 14 18, 14 22 L14 26 C14 26, 17 28, 24 28 C31 28, 34 26, 34 26 L34 22 C34 18, 32 12, 24 12 Z" fill="#1F1F2E" stroke="#888899" stroke-width="1"/><circle cx="20" cy="22" r="1.5" fill="#BF5FFF"/><circle cx="28" cy="22" r="1.5" fill="#BF5FFF"/><line x1="10" y1="28" x2="8" y2="40" stroke="#BF5FFF" stroke-width="2.5" stroke-linecap="round"/><line x1="38" y1="28" x2="40" y2="40" stroke="#BF5FFF" stroke-width="2.5" stroke-linecap="round"/><rect x="16" y="44" width="6" height="16" rx="2" fill="#0A0A0F" stroke="#888899" stroke-width="1"/><rect x="26" y="44" width="6" height="16" rx="2" fill="#0A0A0F" stroke="#888899" stroke-width="1"/></svg>',
 ];
 
 var PATH_COLORS = { green: '#00FF87', blue: '#00C6FF', orange: '#FF9F0A', purple: '#BF5FFF', red: '#FF453A', white: '#FFFFFF' };
 var currentPathColor = '${pathColor}';
 var currentPathStyle = '${pathStyle}';
 var currentAvatarIndex = ${avatarIndex};
+
+// ── Marker Interpolation (for smooth Snapchat-map movements) ───────────────
+function animateMarker(marker, endCoords, duration) {
+  duration = duration || 1200;
+  var start = null;
+  var startCoords = marker.getLngLat();
+  var startLng = startCoords.lng;
+  var startLat = startCoords.lat;
+  var endLng = endCoords[0];
+  var endLat = endCoords[1];
+
+  // If distance is very small (no real change), just set it
+  if (Math.abs(startLng - endLng) < 0.000001 && Math.abs(startLat - endLat) < 0.000001) {
+    marker.setLngLat(endCoords);
+    return;
+  }
+
+  function step(timestamp) {
+    if (!start) start = timestamp;
+    var progress = (timestamp - start) / duration;
+    if (progress > 1) progress = 1;
+
+    // Smooth easeInOutQuad easing function
+    var t = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+
+    var curLng = startLng + (endLng - startLng) * t;
+    var curLat = startLat + (endLat - startLat) * t;
+
+    marker.setLngLat([curLng, curLat]);
+
+    if (progress < 1) {
+      marker._animationFrameId = requestAnimationFrame(step);
+    }
+  }
+
+  if (marker._animationFrameId) {
+    cancelAnimationFrame(marker._animationFrameId);
+  }
+  marker._animationFrameId = requestAnimationFrame(step);
+}
 
 // ── Self marker — uses selected warrior SVG ───────────────────────────────────
 var selfSvg = WARRIOR_SVGS[currentAvatarIndex % WARRIOR_SVGS.length];
@@ -344,12 +394,56 @@ var userMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLng
 var pathCoords = ${pathJSON};
 var polygonsData = ${polygonsJSON};
 var liveUsersData = ${liveUsersJSON};
+var itemsData = ${itemsJSON};
 var showLiveUsersFlag = ${showLiveUsers};
 var pathAdded = false;
 var addedPolyIds = [];
 var labelMarkers = [];
 var liveUserMarkers = {};
+var lootMarkers = {};
 var showNearbyTerritories = ${showNearbyTerritories};
+
+function removeLootMarkers() {
+  Object.values(lootMarkers).forEach(function(m) { try { m.remove(); } catch(e) {} });
+  lootMarkers = {};
+}
+
+function drawItems() {
+  var activeIds = {};
+  var itemSVGs = {
+    gem: '<svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gemGradNative" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00F0FF"/><stop offset="100%" stop-color="#7000FF"/></linearGradient><filter id="glowNative1"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><polygon points="32,6 54,22 44,58 20,58 10,22" fill="url(#gemGradNative)" stroke="#FFF" stroke-width="2.5" filter="url(#glowNative1)"/><polygon points="32,6 32,58" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/><polygon points="10,22 54,22" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"/></svg>',
+    shield: '<svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="shieldGradNative" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#00FF87"/><stop offset="100%" stop-color="#60EFFF"/></linearGradient><filter id="glowNative2"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M32 6 C42 6, 52 12, 54 24 C54 42, 32 58, 32 58 C32 58, 10 42, 10 24 C12 12, 22 6, 32 6 Z" fill="url(#shieldGradNative)" stroke="#FFF" stroke-width="2.5" filter="url(#glowNative2)"/><path d="M32 14 C38 14, 44 18, 45 26 C45 38, 32 48, 32 48 C32 48, 19 38, 19 26 C20 18, 26 14, 32 14 Z" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-dasharray="2,2"/></svg>',
+    boost: '<svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="boostGradNative" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FF9F0A"/><stop offset="100%" stop-color="#FF375F"/></linearGradient><filter id="glowNative3"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><path d="M38 4 L14 34 L30 34 L22 60 L50 26 L32 26 Z" fill="url(#boostGradNative)" stroke="#FFF" stroke-width="2.5" filter="url(#glowNative3)"/></svg>',
+    chest: '<svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="chestGradNative" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#FFD60A"/><stop offset="100%" stop-color="#FF9F0A"/></linearGradient><filter id="glowNative4"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect x="8" y="24" width="48" height="32" rx="6" fill="url(#chestGradNative)" stroke="#FFF" stroke-width="2.5" filter="url(#glowNative4)"/><rect x="6" y="12" width="52" height="12" rx="3" fill="#FFE066" stroke="#FFF" stroke-width="2.5" filter="url(#glowNative4)"/><circle cx="32" cy="28" r="2.5" fill="#FFD60A"/></svg>'
+  };
+  itemsData.forEach(function(item) {
+    if (item.collected) {
+      if (lootMarkers[item.id]) {
+        try { lootMarkers[item.id].remove(); } catch(e) {}
+        delete lootMarkers[item.id];
+      }
+      return;
+    }
+    activeIds[item.id] = true;
+    if (lootMarkers[item.id]) {
+      return;
+    }
+    var el = document.createElement('div');
+    el.className = 'loot-marker-container';
+    el.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.5));cursor:pointer;';
+    el.innerHTML = itemSVGs[item.type] || '❓';
+    var marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([item.longitude, item.latitude]).addTo(map);
+    lootMarkers[item.id] = marker;
+  });
+  
+  // Remove items that are no longer in itemsData
+  Object.keys(lootMarkers).forEach(function(id) {
+    if (!activeIds[id]) {
+      try { lootMarkers[id].remove(); } catch(e) {}
+      delete lootMarkers[id];
+    }
+  });
+}
 
 function getAvatarUrl(ownerId, photoURL) {
   if (photoURL && photoURL.length > 0) return photoURL;
@@ -367,7 +461,46 @@ function colorFromUid(uid) {
   return 'hsl(' + hash + ',80%,60%)';
 }
 
-var labelMarkers = [];
+var renderedPolyIds = {};
+var initialLoadDone = false;
+
+function triggerParticleBurst(lng, lat, color) {
+  var pix = map.project([lng, lat]);
+  var burstContainer = document.createElement('div');
+  burstContainer.style.cssText = 'position:absolute;left:' + pix.x + 'px;top:' + pix.y + 'px;width:0;height:0;z-index:99999;pointer-events:none;';
+  document.body.appendChild(burstContainer);
+
+  var particleCount = 24;
+  for (var i = 0; i < particleCount; i++) {
+    var p = document.createElement('div');
+    var angle = Math.random() * Math.PI * 2;
+    var distance = 30 + Math.random() * 80;
+    var size = 4 + Math.random() * 6;
+    var duration = 0.6 + Math.random() * 0.6;
+    
+    p.style.cssText = [
+      'position:absolute;width:' + size + 'px;height:' + size + 'px;',
+      'background:' + color + ';border-radius:50%;opacity:0.9;',
+      'transform:translate(-50%,-50%);',
+      'box-shadow:0 0 8px ' + color + ';',
+      'transition:all ' + duration + 's cubic-bezier(0.1, 0.8, 0.3, 1);'
+    ].join('');
+    burstContainer.appendChild(p);
+
+    (function(el, a, d) {
+      requestAnimationFrame(function() {
+        var tx = Math.cos(a) * d;
+        var ty = Math.sin(a) * d;
+        el.style.transform = 'translate(' + (tx - 50) + '%, ' + (ty - 50) + '%) scale(0)';
+        el.style.opacity = '0';
+      });
+    })(p, angle, distance);
+  }
+
+  setTimeout(function() {
+    try { document.body.removeChild(burstContainer); } catch(e) {}
+  }, 1500);
+}
 
 function removePolygons() {
   addedPolyIds.forEach(function(id) {
@@ -385,31 +518,78 @@ function removePolygons() {
 function drawPolygons() {
   if (!map.isStyleLoaded()) { map.once('idle', drawPolygons); return; }
   removePolygons();
-  if (!${showPolygons} || polygonsData.length === 0) return;
+  if (!${showPolygons} || polygonsData.length === 0) {
+    initialLoadDone = true;
+    return;
+  }
+  var currentPolyIds = {};
+
   polygonsData.forEach(function(poly, i) {
     var coords = poly.points.map(function(p) { return [p[1], p[0]]; });
     if (coords.length < 3) return;
     coords.push(coords[0]);
+    
+    // Stable ID based on owner and first point coordinates
+    var polyId = poly.ownerId + '-' + coords[0][0].toFixed(5) + '-' + coords[0][1].toFixed(5);
+    currentPolyIds[polyId] = true;
+    
+    var isNew = !renderedPolyIds[polyId];
     var srcId = 'poly-' + Date.now() + '-' + i;
+
     try {
-      map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
+      // Calculate Centroid
+      var centLng = 0, centLat = 0;
+      for (var ci = 0; ci < coords.length - 1; ci++) { centLng += coords[ci][0]; centLat += coords[ci][1]; }
+      centLng /= (coords.length - 1); centLat /= (coords.length - 1);
+
+      if (isNew && initialLoadDone) {
+        // Initialize source with centroid points
+        map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[centLng, centLat], [centLng, centLat], [centLng, centLat], [centLng, centLat]]] } } });
+      } else {
+        map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
+      }
+
       // Outer glow
       map.addLayer({ id: 'glow-' + srcId, type: 'line', source: srcId, paint: { 'line-color': poly.color, 'line-width': 10, 'line-opacity': 0.15, 'line-blur': 6 } });
       // Fill
-      map.addLayer({ id: 'fill-' + srcId, type: 'fill', source: srcId, paint: { 'fill-color': poly.color, 'fill-opacity': 0.28 } });
+      map.addLayer({ id: 'fill-' + srcId, type: 'fill', source: srcId, paint: { 'fill-color': poly.color, 'fill-opacity': isNew && initialLoadDone ? 0 : 0.28 } });
       // Sharp border
-      map.addLayer({ id: 'line-' + srcId, type: 'line', source: srcId, paint: { 'line-color': poly.color, 'line-width': 2.5, 'line-opacity': 1 } });
+      map.addLayer({ id: 'line-' + srcId, type: 'line', source: srcId, paint: { 'line-color': poly.color, 'line-width': 2.5, 'line-opacity': isNew && initialLoadDone ? 0 : 1 } });
       addedPolyIds.push(srcId);
 
-      // Owner name label — ALWAYS shown on all territories so users know who owns what
-      // showNearbyTerritories controls whether the label is shown at all
+      if (isNew && initialLoadDone) {
+        var startTime = null;
+        var duration = 1500;
+        function animateFlood(timestamp) {
+          if (!startTime) startTime = timestamp;
+          var progress = (timestamp - startTime) / duration;
+          if (progress > 1) progress = 1;
+          
+          var t = 1 - Math.pow(1 - progress, 3); // easeOutCubic
+          var animatedCoords = coords.map(function(c) {
+            return [ centLng + (c[0] - centLng) * t, centLat + (c[1] - centLat) * t ];
+          });
+          
+          try {
+            if (map.getSource(srcId)) {
+              map.getSource(srcId).setData({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [animatedCoords] } });
+              map.setPaintProperty('fill-' + srcId, 'fill-opacity', 0.28 * t);
+              map.setPaintProperty('line-' + srcId, 'line-opacity', 1 * t);
+            }
+          } catch(e) {}
+          
+          if (progress < 1) {
+            requestAnimationFrame(animateFlood);
+          }
+        }
+        requestAnimationFrame(animateFlood);
+        triggerParticleBurst(centLng, centLat, poly.color);
+      }
+
+      // Owner name label
       if (poly.ownerName) {
-        var centLng = 0, centLat = 0;
-        for (var ci = 0; ci < coords.length - 1; ci++) { centLng += coords[ci][0]; centLat += coords[ci][1]; }
-        centLng /= (coords.length - 1); centLat /= (coords.length - 1);
         var name = poly.ownerName.length > 10 ? poly.ownerName.slice(0,9)+'\u2026' : poly.ownerName;
         var labelEl = document.createElement('div');
-        // Dark pill with colored left accent — readable on ALL map themes
         labelEl.style.cssText = [
           'display:flex;align-items:center;gap:4px;',
           'background:rgba(8,10,16,0.88);',
@@ -422,19 +602,37 @@ function drawPolygons() {
           'white-space:nowrap;',
           'backdrop-filter:blur(4px);',
         ].join('');
-        // Colored dot + white name
         labelEl.innerHTML = '<div style="width:6px;height:6px;border-radius:3px;background:' + poly.color + ';flex-shrink:0;"></div>' +
           '<span style="color:#FFFFFF;font-size:10px;font-weight:800;font-family:Arial,sans-serif;letter-spacing:0.3px;">' + name + '</span>';
+        
+        if (isNew && initialLoadDone) {
+          labelEl.style.opacity = '0';
+          labelEl.style.transform = 'scale(0.5)';
+          labelEl.style.transition = 'all 0.5s ease-out 1.2s';
+          setTimeout(function() {
+            labelEl.style.opacity = '1';
+            labelEl.style.transform = 'scale(1)';
+          }, 50);
+        }
+
         var lm = new maplibregl.Marker({ element: labelEl, anchor: 'center' }).setLngLat([centLng, centLat]).addTo(map);
         labelMarkers.push(lm);
       }
     } catch(e) {}
   });
+
+  renderedPolyIds = currentPolyIds;
+  initialLoadDone = true;
 }
 
 // ── Live user markers ─────────────────────────────────────────────────────────
 function removeLiveUserMarkers() {
-  Object.values(liveUserMarkers).forEach(function(m) { try { m.remove(); } catch(e) {} });
+  Object.values(liveUserMarkers).forEach(function(m) {
+    try {
+      if (m._animationFrameId) cancelAnimationFrame(m._animationFrameId);
+      m.remove();
+    } catch(e) {}
+  });
   liveUserMarkers = {};
 }
 
@@ -445,7 +643,7 @@ function drawLiveUsers() {
     currentUids[u.uid] = true;
     // Update position if marker already exists
     if (liveUserMarkers[u.uid]) {
-      liveUserMarkers[u.uid].setLngLat([u.longitude, u.latitude]);
+      animateMarker(liveUserMarkers[u.uid], [u.longitude, u.latitude], 1500);
       return;
     }
     // Create new marker — use warrior SVG based on their stored avatarIndex
@@ -502,7 +700,11 @@ function drawLiveUsers() {
   // Remove markers for users no longer present
   Object.keys(liveUserMarkers).forEach(function(uid) {
     if (!currentUids[uid]) {
-      try { liveUserMarkers[uid].remove(); } catch(e) {}
+      try {
+        var m = liveUserMarkers[uid];
+        if (m._animationFrameId) cancelAnimationFrame(m._animationFrameId);
+        m.remove();
+      } catch(e) {}
       delete liveUserMarkers[uid];
     }
   });
@@ -535,7 +737,7 @@ function drawPath() {
   }
 }
 
-map.on('load', function() { drawPolygons(); drawLiveUsers(); if (${showPath}) drawPath(); });
+map.on('load', function() { drawPolygons(); drawLiveUsers(); drawItems(); if (${showPath}) drawPath(); });
 
 // ── Goal circle ───────────────────────────────────────────────────────────────
 var goalCircleKm = ${goalCircleKm ?? 0};
@@ -587,13 +789,14 @@ function handleMsg(raw) {
   try {
     var msg = JSON.parse(raw);
     if (msg.type === 'UPDATE') {
-      userMarker.setLngLat([msg.lng, msg.lat]);
-      if (msg.recenter === true) map.easeTo({ center: [msg.lng, msg.lat], duration: 500 });
+      animateMarker(userMarker, [msg.lng, msg.lat], 1000);
+      if (msg.recenter === true) map.easeTo({ center: [msg.lng, msg.lat], duration: 1200 });
       if (msg.path !== undefined) { pathCoords = msg.path; drawPath(); }
       if (msg.polygons !== undefined) { polygonsData = msg.polygons; drawPolygons(); }
       if (msg.showNearbyTerritories !== undefined) { showNearbyTerritories = msg.showNearbyTerritories; drawPolygons(); }
       if (msg.liveUsers !== undefined) { liveUsersData = msg.liveUsers; drawLiveUsers(); }
       if (msg.showLiveUsers !== undefined) { showLiveUsersFlag = msg.showLiveUsers; drawLiveUsers(); }
+      if (msg.items !== undefined) { itemsData = msg.items; drawItems(); }
     } else if (msg.type === 'RECENTER') {
       map.flyTo({ center: [msg.lng, msg.lat], zoom: ${zoom}, pitch: ${pitch}, duration: 1000 });
     } else if (msg.type === 'FLY_TO') {
@@ -653,6 +856,7 @@ function handleMsg(raw) {
         drawPolygons();
         drawPath();
         drawLiveUsers();
+        drawItems();
         if (goalCircleKm > 0) drawGoalCircle(startLat, startLng, goalCircleKm);
       }
       map.once('idle', redrawAfterStyle);
@@ -691,6 +895,7 @@ const MapRunViewInner = forwardRef<MapRunViewRef, Props>(function MapRunView({
   avatarIndex = 0,
   pathStyle = 'solid',
   pathColor = '#00FF87',
+  items = [],
 }, ref) {
   const webRef          = useRef<WebView>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -861,9 +1066,10 @@ const MapRunViewInner = forwardRef<MapRunViewRef, Props>(function MapRunView({
           }))
         : [],
       showLiveUsers,
+      items,
     };
     webRef.current.postMessage(JSON.stringify(msg));
-  }, [region, path, polygons, showPath, showPolygons, headingDeg, mapReady, liveUsers, showLiveUsers]);
+  }, [region, path, polygons, showPath, showPolygons, headingDeg, mapReady, liveUsers, showLiveUsers, items]);
 
   // Save location to cache whenever we get a real GPS fix
   useEffect(() => {
@@ -894,6 +1100,7 @@ const MapRunViewInner = forwardRef<MapRunViewRef, Props>(function MapRunView({
       avatarIndex,
       pathStyle,
       pathColor,
+      items,
     );
   }
 

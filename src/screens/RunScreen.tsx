@@ -13,6 +13,8 @@ import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '@/utils/ThemeContext';
+import { usePremium } from '@/context/PremiumContext';
+import * as Speech from 'expo-speech';
 import MapRunView, { MapRunViewRef } from '@/components/MapRunView';
 import { useRunTracker } from '@/hooks/useRunTracker';
 import { Territory } from '@/types';
@@ -22,13 +24,15 @@ import { getSettings, Settings } from '@/config/settings';
 import { subscribeSettingsChange } from '@/config/settingsEvents';
 import { fetchLocalWeather, WeatherData } from '@/services/weatherService';
 import { fetchMotivationalQuote, QuoteData } from '@/services/quoteService';
-import { getHistory, RunRecord } from '@/services/history';
+import { getHistory, RunRecord, deleteRun } from '@/services/history';
 import { emitAchievementsCheck, subscribeAchievementEvents } from '@/hooks/useAchievementEvents';
 import { computeAchievements, Achievement } from '@/utils/computeAchievements';
 import { getMusicState, subscribeMusicState } from '@/hooks/useMusicStore';
 import { setRunStore } from '@/store/useRunStore';
 import { pathDistance, distanceToStart, polygonAreaSqMeters } from '@/utils/geometry';
 import { NotificationService } from '@/services/notificationService';
+import { ItemSpawn, spawnNearbyItems, collectLootItems, updateQuestProgress } from '@/services/inventoryService';
+import { playSound, preloadSounds, unloadAllSounds, setSoundEnabled } from '@/services/soundService';
 
 // Modular Components
 import ConfirmStop from '@/components/run/ConfirmStop';
@@ -42,9 +46,17 @@ import RunBotFAB from '@/components/run/RunBotFAB';
 import RunBotHelpModal from '@/components/run/RunBotHelpModal';
 import RunMusicControl from '@/components/run/RunMusicControl';
 import { MusicPlayer, Marquee } from '@/components/MusicPlayer';
+import CoachmarksOverlay from '@/components/run/CoachmarksOverlay';
 
 
-const { width } = Dimensions.get('window');
+const getPacerOptions = (isMetric: boolean) => [
+  { label: 'No Pacer', pace: 0 },
+  { label: isMetric ? '4:30 /km' : '7:00 /mi', pace: isMetric ? 4.5 : 7.0 },
+  { label: isMetric ? '5:00 /km' : '8:00 /mi', pace: isMetric ? 5.0 : 8.0 },
+  { label: isMetric ? '5:30 /km' : '9:00 /mi', pace: isMetric ? 5.5 : 9.0 },
+  { label: isMetric ? '6:00 /km' : '10:00 /mi', pace: isMetric ? 6.0 : 10.0 },
+  { label: isMetric ? '7:00 /km' : '11:00 /mi', pace: isMetric ? 7.0 : 11.0 },
+];
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -55,10 +67,43 @@ export default function RunScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const isFocused = useIsFocused();
+  const { status } = usePremium();
+  const userTier = status.tier || 'free';
   const { state, path, region, accuracyMeters, headingDeg, altitudeMeters, startRun, pauseRun, resumeRun, stopRun, reset, recenter, closedLoop, isSaving, startedAt, totalPausedMs, pausedAt } = useRunTracker();
-
   const prevClosedLoop = useRef<boolean>(false);
   const [showLoopToast, setShowLoopToast] = useState(false);
+
+  // Spawning and collecting loot items
+  const [spawnedItems, setSpawnedItems] = useState<ItemSpawn[]>([]);
+  const [collectedNotification, setCollectedNotification] = useState<string | null>(null);
+
+  // Spawn items once when state transitions to 'running'
+  const prevRunState = useRef<string>('idle');
+  useEffect(() => {
+    if (state === 'running' && prevRunState.current !== 'running' && region) {
+      setSpawnedItems(spawnNearbyItems(region.latitude, region.longitude));
+    } else if (state === 'idle') {
+      setSpawnedItems([]);
+    }
+    prevRunState.current = state;
+  }, [state, region]);
+
+  // Check for item collection when user location (region) updates
+  useEffect(() => {
+    if (state === 'running' && region && spawnedItems.length > 0) {
+      collectLootItems(region.latitude, region.longitude, spawnedItems).then(({ collectedItems, updatedItemsList, rewardSummary }) => {
+        if (collectedItems.length > 0) {
+          setSpawnedItems(updatedItemsList);
+          setCollectedNotification(rewardSummary);
+          playSound('loot_collected');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          const timer = setTimeout(() => {
+            setCollectedNotification(prev => prev === rewardSummary ? null : prev);
+          }, 3500);
+        }
+      });
+    }
+  }, [region, state, spawnedItems]);
 
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [liveUsers, setLiveUsers] = useState<LiveUser[]>([]);
@@ -83,14 +128,98 @@ export default function RunScreen() {
   const [showPauseWarning, setShowPauseWarning] = useState(false);
   const pausePositionRef = useRef<{ lat: number; lng: number } | null>(null);
   const [showMapPicker, setShowMapPicker] = useState(false);
+  const [showHub, setShowHub] = useState(false);
+  const [showCoachmarks, setShowCoachmarks] = useState(false);
 
   // ── Countdown before run ──────────────────────────────────────────────────
   const [countdown, setCountdown] = useState<number | null>(null);
   const countdownAnim = useRef(new Animated.Value(0)).current;
 
+  // ── Milestone tracking (distance) ─────────────────────────────────────────
+  const lastMilestoneKm = useRef(0);
+  const lastVoiceTimeRef = useRef<number>(0);
+
+  const speakStatus = (sec: number) => {
+    if (userTier !== 'elite' && userTier !== 'pro') return;
+    if (settings?.voiceCoachEnabled === false) return;
+
+    const mins = Math.floor(sec / 60);
+    // Speak at each minute mark (1min, 2min, etc.)
+    if (mins > 0 && sec % 60 === 0 && lastVoiceTimeRef.current !== sec) {
+      lastVoiceTimeRef.current = sec;
+      const isMetric = settings?.units !== 'imperial';
+      const dist = pathDistance(path);
+      const distKm = dist / (isMetric ? 1000 : 1609.34);
+      const distStr = distKm.toFixed(2) + (isMetric ? ' kilometers' : ' miles');
+
+      // Pace
+      const currentPaceMinPerKm = dist > 50 ? (sec / 60) / distKm : 0;
+      let paceMsg = '';
+      if (currentPaceMinPerKm > 0) {
+        const pMin = Math.floor(currentPaceMinPerKm);
+        const pSec = Math.round((currentPaceMinPerKm - pMin) * 60);
+        paceMsg = ` Pace: ${pMin} minutes ${pSec} seconds per ${isMetric ? 'kilometer' : 'mile'}.`;
+
+        // Zone coaching
+        if (currentPaceMinPerKm > 8) paceMsg += ' Easy zone. Great for recovery.';
+        else if (currentPaceMinPerKm > 6) paceMsg += ' Aerobic zone. Keep it up!';
+        else if (currentPaceMinPerKm > 5) paceMsg += ' Tempo zone. Strong effort!';
+        else if (currentPaceMinPerKm > 4) paceMsg += ' High intensity zone. Push through!';
+        else paceMsg += ' Maximum effort. Outstanding!';
+      }
+
+      let message = `${mins} minute${mins === 1 ? '' : 's'}. ${distStr}.${paceMsg}`;
+
+      // Pacer delta
+      if (settings?.pacerEnabled && (userTier === 'elite' || userTier === 'pro')) {
+        const pPace = settings.pacerPaceMinPerKm || 5.5;
+        const pDist = ((sec / 60) / pPace) * (isMetric ? 1000 : 1609.34);
+        const diff = dist - pDist;
+        const absDiff = Math.round(Math.abs(diff));
+        if (absDiff > 5) {
+          message += diff >= 0
+            ? ` ${absDiff} meters ahead of pacer.`
+            : ` ${absDiff} meters behind pacer. Pick it up!`;
+        } else {
+          message += ' On pace. Perfect.';
+        }
+      }
+
+      // Motivational nudge at key minutes
+      if (mins === 5) message += ' Five minutes done. Great start!';
+      else if (mins === 10) message += ' Ten minutes. Keep the momentum!';
+      else if (mins === 20) message += ' Twenty minutes. You are doing amazing!';
+      else if (mins === 30) message += ' Half hour! Incredible effort!';
+
+      Speech.speak(message, { rate: 0.92, pitch: 1.0 });
+    }
+  };
+
+  const startBtnPulse = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    let anim: Animated.CompositeAnimation | null = null;
+    if (state === 'idle') {
+      startBtnPulse.setValue(1);
+      anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(startBtnPulse, { toValue: 1.04, duration: 1100, useNativeDriver: true }),
+          Animated.timing(startBtnPulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
+        ])
+      );
+      anim.start();
+    } else {
+      startBtnPulse.setValue(1);
+    }
+    return () => {
+      if (anim) anim.stop();
+    };
+  }, [state]);
+
   const startWithCountdown = () => {
     setCountdown(3);
     countdownAnim.setValue(0);
+    lastMilestoneKm.current = 0;
   };
 
   useEffect(() => {
@@ -98,12 +227,27 @@ export default function RunScreen() {
     if (countdown === 0) {
       // Show GO! for 600ms then actually start
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      playSound('countdown_go');
       countdownAnim.setValue(0);
       Animated.timing(countdownAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
-      const t = setTimeout(() => { setCountdown(null); startRun(); }, 700);
+      const t = setTimeout(() => {
+        setCountdown(null);
+        startRun();
+        playSound('run_start');
+        if (settings?.voiceCoachEnabled !== false && (userTier === 'elite' || userTier === 'pro')) {
+          let startupText = 'Run started.';
+          if (settings?.pacerEnabled) {
+            const isMetric = settings.units !== 'imperial';
+            startupText += ` Virtual pacer target set to ${settings.pacerPaceMinPerKm} minutes per ${isMetric ? 'kilometer' : 'mile'}.`;
+          }
+          startupText += ' Have a great workout!';
+          Speech.speak(startupText, { rate: 0.95 });
+        }
+      }, 700);
       return () => clearTimeout(t);
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    playSound('countdown_tick');
     countdownAnim.setValue(0);
     Animated.timing(countdownAnim, { toValue: 1, duration: 900, useNativeDriver: true }).start();
     const t = setTimeout(() => setCountdown(c => (c !== null ? c - 1 : null)), 1000);
@@ -317,9 +461,15 @@ export default function RunScreen() {
     if (state === 'running') {
       timer = setInterval(() => {
         if (startedAt) {
-          setElapsed(Math.floor((Date.now() - startedAt - totalPausedMs) / 1000));
+          const nextElapsed = Math.floor((Date.now() - startedAt - totalPausedMs) / 1000);
+          setElapsed(nextElapsed);
+          speakStatus(nextElapsed);
         } else {
-          setElapsed(e => e + 1);
+          setElapsed(e => {
+            const next = e + 1;
+            speakStatus(next);
+            return next;
+          });
         }
       }, 1000);
     }
@@ -449,15 +599,38 @@ export default function RunScreen() {
     return () => clearInterval(timer);
   }, [state]);
 
-  // Closed loop haptic + toast
+  // Closed loop haptic + toast + sound
   useEffect(() => {
     if (closedLoop && !prevClosedLoop.current) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      playSound('loop_closed');
       setShowLoopToast(true);
       setTimeout(() => setShowLoopToast(false), 4000);
     }
     prevClosedLoop.current = closedLoop;
   }, [closedLoop]);
+
+  // ── Per-km milestone sounds ────────────────────────────────────────────────
+  // Uses path directly to avoid referencing displayDist before its declaration
+  useEffect(() => {
+    if (state !== 'running') return;
+    const dist = pathDistance(path);
+    const km = dist / 1000;
+    const crossed = Math.floor(km);
+    if (crossed > 0 && crossed > lastMilestoneKm.current) {
+      lastMilestoneKm.current = crossed;
+      if (crossed >= 10 && crossed % 10 === 0) {
+        playSound('milestone_10km');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else if (crossed >= 5 && crossed % 5 === 0) {
+        playSound('milestone_5km');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        playSound('milestone_1km');
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+    }
+  }, [path, state]);
 
   // Map search via Nominatim — debounced, with better params for global city search
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -549,6 +722,7 @@ export default function RunScreen() {
   };
 
   const onClaim = async () => {
+    playSound('territory_claimed');
     // Snapshot path and closedLoop at claim time — don't rely on hook state
     // which may have been reset by stopRun()
     const claimPath = path.length >= 3 ? path : null;
@@ -574,6 +748,7 @@ export default function RunScreen() {
           const totalConquered = res.conquered.reduce((s, c) => s + c.areaSqMeters, 0);
           title = '⚔️ Territory Conquered!';
           message = `Conquered ${res.conquered.length} territor${res.conquered.length === 1 ? 'y' : 'ies'} from ${names} — ${Math.round(totalConquered)}m² seized!`;
+          playSound('territory_conquered');
           NotificationService.notify(title, message);
         }
         if (res.partialConquests && res.partialConquests.length > 0) {
@@ -593,6 +768,7 @@ export default function RunScreen() {
 
         // Show in-app alert so user sees it immediately (notifications may not show in foreground)
         Alert.alert(title, message, [{ text: 'Awesome!', style: 'default' }]);
+        updateQuestProgress('loop', 1).catch(() => {});
         reset();
       }
     } catch (e: any) {
@@ -623,6 +799,17 @@ export default function RunScreen() {
     });
   }, [state, elapsed, distVal, isMetric]);
 
+  // Sync sound enabled from settings.vibrateOnAction
+  useEffect(() => {
+    setSoundEnabled(settings?.vibrateOnAction !== false);
+  }, [settings?.vibrateOnAction]);
+
+  // Preload key sounds on mount, unload on unmount
+  useEffect(() => {
+    preloadSounds(['countdown_tick', 'countdown_go', 'run_start', 'run_stop', 'loop_closed']);
+    return () => { unloadAllSounds(); };
+  }, []);
+
   // Publish live presence — respects showMyLocation privacy setting
   // Publishes whenever region is known and user has location sharing on
   useEffect(() => {
@@ -644,13 +831,17 @@ export default function RunScreen() {
   }, [state, region, settings]);
 
   const formatTime = (s: number) => {
-    const min = Math.floor(s / 60);
+    const h = Math.floor(s / 3600);
+    const min = Math.floor((s % 3600) / 60);
     const sec = s % 60;
+    if (h > 0) return `${h}:${min < 10 ? '0' : ''}${min}:${sec < 10 ? '0' : ''}${sec}`;
     return `${min}:${sec < 10 ? '0' : ''}${sec}`;
   };
 
   const handleStop = async () => {
     const isTinyRun = elapsed < 10 && displayDist < 10;
+    playSound('run_stop');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
 
     // Truly accidental tap — discard silently, no summary
     if (isTinyRun) {
@@ -690,14 +881,23 @@ export default function RunScreen() {
     const distSnap = displayDist;
     const goalSnap = { ...goal };
 
+    let savedId: string | null = null;
     try {
-      await stopRun();
+      savedId = await stopRun();
+      if (settings?.voiceCoachEnabled !== false && (userTier === 'elite' || userTier === 'pro')) {
+        const isMetric = settings?.units !== 'imperial';
+        const distFormatted = parseFloat(dist).toFixed(2) + (isMetric ? ' kilometers' : ' miles');
+        const speechText = `Workout completed. You ran ${distFormatted} in ${time}. Great job today!`;
+        Speech.speak(speechText, { rate: 0.95 });
+      }
+      updateQuestProgress('distance', distSnap).catch(() => {});
     } catch (err) {
       console.error('stopRun failed:', err);
       // Don't block summary on save error
     }
 
     setSummary({
+      id: savedId,
       distance: dist,
       time,
       unit,
@@ -723,33 +923,68 @@ export default function RunScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: T.black }}>
-      {/* Map */}
-      <MapRunView
-        ref={mapRef}
-        region={region} path={path}
-        polygons={territories.map(t => ({
-            points: t.polygon,
-            // Team color takes priority — territories show team identity on the map
-            color: t.teamColor || t.color,
-            ownerName: t.ownerUsername || t.ownerDisplayName || '',
-            ownerPhotoURL: t.ownerPhotoURL || null,
-            ownerId: t.ownerId,
-          }))}
-        showPolygons={showPolygons} showPath={showPath} tileStyle={tileStyle}
-        showNearbyTerritories={settings?.showNearbyTerritories !== false}
-        accuracyMeters={accuracyMeters} headingDeg={headingDeg}
-        showZoomButtons={settings?.showZoomButtons !== false}
-        goalCircleKm={goal.type === 'distance' ? goal.valueKm : null}
-        liveUsers={liveUsers}
-        showLiveUsers={settings?.showLiveUsers !== false}
-        avatarIndex={(settings as any)?.avatarIndex ?? 0}
-        pathStyle={(settings as any)?.pathStyle ?? 'solid'}
-        pathColor={(() => {
-          const c = (settings as any)?.pathColor ?? 'green';
-          const map: Record<string, string> = { green: '#00FF87', blue: '#00C6FF', orange: '#FF9F0A', purple: '#BF5FFF', red: '#FF453A', white: '#FFFFFF' };
-          return map[c] ?? '#00FF87';
-        })()}
-      />
+      {/* Map Background */}
+      <View style={StyleSheet.absoluteFill}>
+        <MapRunView
+          ref={mapRef}
+          region={region} path={path}
+          polygons={territories.map(t => ({
+              points: t.polygon,
+              // Team color takes priority — territories show team identity on the map
+              color: t.teamColor || t.color,
+              ownerName: t.ownerUsername || t.ownerDisplayName || '',
+              ownerPhotoURL: t.ownerPhotoURL || null,
+              ownerId: t.ownerId,
+            }))}
+          showPolygons={showPolygons} showPath={showPath} tileStyle={tileStyle}
+          showNearbyTerritories={settings?.showNearbyTerritories !== false}
+          accuracyMeters={accuracyMeters} headingDeg={headingDeg}
+          showZoomButtons={settings?.showZoomButtons !== false}
+          goalCircleKm={goal.type === 'distance' ? goal.valueKm : null}
+          liveUsers={liveUsers}
+          showLiveUsers={settings?.showLiveUsers !== false}
+          avatarIndex={(settings as any)?.avatarIndex ?? 0}
+          pathStyle={(settings as any)?.pathStyle ?? 'solid'}
+          pathColor={(() => {
+            const c = (settings as any)?.pathColor ?? 'green';
+            const map: Record<string, string> = { green: '#00FF87', blue: '#00C6FF', orange: '#FF9F0A', purple: '#BF5FFF', red: '#FF453A', white: '#FFFFFF' };
+            return map[c] ?? '#00FF87';
+          })()}
+          items={spawnedItems}
+        />
+      </View>
+
+      {/* Loot Collected Toast */}
+      {collectedNotification && (
+        <View style={{
+          position: 'absolute',
+          top: insets.top + 70,
+          alignSelf: 'center',
+          backgroundColor: 'rgba(10,12,16,0.95)',
+          borderWidth: 1.5,
+          borderColor: T.gold,
+          borderRadius: 24,
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+          zIndex: 9999,
+          shadowColor: T.gold,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.3,
+          shadowRadius: 8,
+          elevation: 6,
+        }}>
+          <Ionicons name="gift" size={16} color={T.gold} />
+          <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '900', fontFamily: 'Arial' }}>
+            LOOT COLLECTED:
+          </Text>
+          <Text style={{ color: T.gold, fontSize: 13, fontWeight: '900', fontFamily: 'Arial' }}>
+            {collectedNotification}
+          </Text>
+        </View>
+      )}
 
       {/* ── Location permission denied overlay ── */}
       {locationPermission === 'denied' && (
@@ -812,6 +1047,20 @@ export default function RunScreen() {
         onClaim={openClaimModal}
         loopAreaSqM={loopAreaSqM}
         onClose={() => { setShowSummary(false); setElapsed(0); reset(); }}
+        onDiscard={async () => {
+          if (summary?.id) {
+            try {
+              await deleteRun(summary.id);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (err) {
+              console.error('Discard run failed:', err);
+            }
+          }
+          setShowSummary(false);
+          setSummary(null);
+          setElapsed(0);
+          reset();
+        }}
       />
 
       {/* ════ COUNTDOWN OVERLAY ════ */}
@@ -1045,6 +1294,42 @@ export default function RunScreen() {
               </>
             )}
 
+            {settings?.pacerEnabled && (userTier === 'elite' || userTier === 'pro') && (
+              <>
+                <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.08)' }} />
+                {(() => {
+                  const pPace = settings.pacerPaceMinPerKm || 5.5;
+                  const targetDistM = ((elapsed / 60) / pPace) * (isMetric ? 1000 : 1609.34);
+                  const diff = displayDist - targetDistM;
+                  const ahead = diff >= 0;
+                  const absDiff = Math.abs(diff);
+                  return (
+                    <View style={{
+                      paddingHorizontal: 14,
+                      paddingVertical: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: ahead ? 'rgba(76,217,100,0.06)' : 'rgba(255,159,10,0.06)',
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Ionicons name="speedometer-outline" size={13} color={ahead ? T.green : '#FF9F0A'} />
+                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, fontWeight: '700' }}>
+                          Pacer: {pPace.toFixed(1)} min/{isMetric ? 'km' : 'mi'}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name={ahead ? 'flash' : 'trending-down'} size={12} color={ahead ? T.green : '#FF9F0A'} />
+                        <Text style={{ color: ahead ? T.green : '#FF9F0A', fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>
+                          {ahead ? `${Math.round(absDiff)}m AHEAD` : `${Math.round(absDiff)}m BEHIND`}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })()}
+              </>
+            )}
+
             {/* Location row — hidden in clean mode */}
             {!cleanMode && (
             <View style={{
@@ -1240,6 +1525,18 @@ export default function RunScreen() {
           top: state === 'running' ? insets.top + 160 : insets.top + 100,
           right: 16,
         }]}>
+          {/* Feature Hub button */}
+          <TouchableOpacity
+            onPress={() => { setShowHub(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
+            style={[styles.toolBtn, {
+              backgroundColor: '#0A0C10',
+              borderColor: '#FFD60A',
+              borderWidth: 1.5,
+            }]}
+          >
+            <Ionicons name="apps" size={22} color="#FFD60A" />
+          </TouchableOpacity>
+
           {settings?.showTerritoryBtn !== false && (
             <TouchableOpacity
               onPress={() => { setShowPolygons(v => !v); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
@@ -1256,14 +1553,14 @@ export default function RunScreen() {
           <TouchableOpacity
             onPress={() => { setShowMapPicker(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
             style={[styles.toolBtn, {
-              backgroundColor: tileStyle !== 'dark' ? '#FFD60A' : '#0A0C10',
-              borderColor: tileStyle !== 'dark' ? '#FFD60A' : 'rgba(255,255,255,0.4)',
+              backgroundColor: '#0A0C10',
+              borderColor: 'rgba(255,255,255,0.4)',
             }]}
           >
             <Ionicons
-              name={tileStyle === 'satellite' ? 'earth' : tileStyle === '3d' ? 'cube-outline' : tileStyle === 'default' ? 'sunny-outline' : 'moon-outline'}
+              name="layers-outline"
               size={22}
-              color={tileStyle !== 'dark' ? '#000' : '#FFF'}
+              color="#FFF"
             />
           </TouchableOpacity>
 
@@ -1322,25 +1619,40 @@ export default function RunScreen() {
                     style={{ flex: 1, alignItems: 'center', gap: 8 }}
                   >
                     {/* Map preview thumbnail */}
-                    <View style={{
-                      width: '100%', aspectRatio: 1, borderRadius: 16,
-                      backgroundColor: opt.preview,
-                      borderWidth: isActive ? 3 : 1.5,
-                      borderColor: isActive ? opt.color : (isLight ? '#DDD' : 'rgba(255,255,255,0.15)'),
-                      alignItems: 'center', justifyContent: 'center',
-                      overflow: 'hidden',
-                    }}>
-                      <Ionicons name={opt.icon as any} size={28} color={isActive ? opt.color : (isLight ? '#666' : '#AAA')} />
+                    <LinearGradient
+                      colors={
+                        opt.id === 'default' ? ['#E8F4F8', '#C5E0EC'] :
+                        opt.id === 'dark' ? ['#1A1F2C', '#0D1117'] :
+                        opt.id === 'satellite' ? ['#1B3A1B', '#0A1A0A'] :
+                        ['#2D3748', '#1A202C']
+                      }
+                      style={{
+                        width: '100%', aspectRatio: 1, borderRadius: 16,
+                        borderWidth: isActive ? 2.5 : 1,
+                        borderColor: isActive ? opt.color : (isLight ? '#E2E8F0' : 'rgba(255,255,255,0.15)'),
+                        alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden',
+                        shadowColor: '#000',
+                        shadowOpacity: isActive ? 0.3 : 0.1,
+                        shadowRadius: 6,
+                        elevation: isActive ? 4 : 1,
+                      }}
+                    >
+                      <Ionicons
+                        name={opt.icon as any}
+                        size={26}
+                        color={isActive ? opt.color : (isLight ? '#4A5568' : '#A0AEC0')}
+                      />
                       {isActive && (
                         <View style={{
                           position: 'absolute', top: 6, right: 6,
-                          width: 20, height: 20, borderRadius: 10,
+                          width: 18, height: 18, borderRadius: 9,
                           backgroundColor: opt.color, alignItems: 'center', justifyContent: 'center',
                         }}>
-                          <Ionicons name="checkmark" size={12} color="#000" />
+                          <Ionicons name="checkmark" size={10} color="#000" />
                         </View>
                       )}
-                    </View>
+                    </LinearGradient>
                     <Text style={{
                       color: isActive ? opt.color : (isLight ? '#333' : '#CCC'),
                       fontSize: 12, fontWeight: isActive ? '900' : '600',
@@ -1450,8 +1762,10 @@ export default function RunScreen() {
               onPress={() => {
                 if (state === 'running') {
                   pauseRun();
+                  playSound('run_pause');
                 } else {
                   resumeRun();
+                  playSound('run_resume');
                 }
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
               }}
@@ -1558,10 +1872,121 @@ export default function RunScreen() {
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+
+                {/* Virtual Pacer Selector */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 0.8 }}>VIRTUAL PACER (PRO/ELITE)</Text>
+                  {settings?.pacerEnabled && (
+                    <Text style={{ color: '#BF5FFF', fontSize: 10, fontWeight: '800' }}>
+                      Target: {settings?.pacerPaceMinPerKm} min/{isMetric ? 'km' : 'mi'}
+                    </Text>
+                  )}
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 4, marginBottom: 10 }}>
+                  {getPacerOptions(isMetric).map((opt, i) => {
+                    const isSelected = settings?.pacerEnabled ? (settings?.pacerPaceMinPerKm === opt.pace) : (opt.pace === 0);
+                    const isLocked = opt.pace !== 0 && userTier !== 'pro' && userTier !== 'elite';
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          if (isLocked) {
+                            Alert.alert(
+                              'Unlock Required',
+                              'The Virtual Pacer is exclusive to RunQuest PRO and ELITE members. Upgrade now to race against your target pace!',
+                              [
+                                { text: 'Cancel', style: 'cancel' },
+                                { text: 'View Plans', onPress: () => navigation.navigate('Profile', { screen: 'Premium' }) }
+                              ]
+                            );
+                            return;
+                          }
+                          import('../config/settings').then(({ updateSettings }) => {
+                            updateSettings({
+                              pacerEnabled: opt.pace !== 0,
+                              pacerPaceMinPerKm: opt.pace,
+                            });
+                          }).catch(() => {});
+                        }}
+                        style={{
+                          paddingHorizontal: 11, paddingVertical: 6, borderRadius: 10,
+                          flexDirection: 'row', alignItems: 'center', gap: 4,
+                          backgroundColor: isSelected
+                            ? '#BF5FFF22'
+                            : (isLight ? '#F0F0F5' : 'rgba(255,255,255,0.05)'),
+                          borderWidth: 1,
+                          borderColor: isSelected
+                            ? '#BF5FFF70'
+                            : (isLight ? '#E0E0E0' : 'rgba(255,255,255,0.07)'),
+                        }}
+                      >
+                        {isLocked && <Ionicons name="lock-closed" size={10} color={T.text} />}
+                        <Text style={{
+                          fontSize: 11, fontWeight: isSelected ? '800' : '500',
+                          color: isSelected ? '#BF5FFF' : T.text,
+                        }}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Voice Coach Toggle */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, backgroundColor: isLight ? '#F9F9FB' : 'rgba(255,255,255,0.02)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 12, borderWidth: 1, borderColor: isLight ? '#EEE' : 'rgba(255,255,255,0.05)' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="mic-outline" size={14} color={settings?.voiceCoachEnabled !== false ? T.green : T.text} />
+                    <Text style={{ color: T.text, fontSize: 12, fontWeight: '700' }}>AI Voice Coach</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      const isLocked = userTier !== 'pro' && userTier !== 'elite';
+                      if (isLocked) {
+                        Alert.alert(
+                          'Unlock Required',
+                          'The AI Voice Coach is exclusive to RunQuest PRO and ELITE members. Upgrade now to get real-time audio pace alerts!',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            { text: 'View Plans', onPress: () => navigation.navigate('Profile', { screen: 'Premium' }) }
+                          ]
+                        );
+                        return;
+                      }
+                      const curVal = settings?.voiceCoachEnabled !== false;
+                      import('../config/settings').then(({ updateSettings }) => {
+                        updateSettings({ voiceCoachEnabled: !curVal });
+                      }).catch(() => {});
+                    }}
+                    style={{
+                      paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8,
+                      backgroundColor: settings?.voiceCoachEnabled !== false
+                        ? T.green + '22'
+                        : (isLight ? '#F0F0F5' : 'rgba(255,255,255,0.08)'),
+                      borderWidth: 1,
+                      borderColor: settings?.voiceCoachEnabled !== false
+                        ? T.green + '50'
+                        : (isLight ? '#DDD' : 'rgba(255,255,255,0.1)'),
+                    }}
+                  >
+                    <Text style={{ color: settings?.voiceCoachEnabled !== false ? T.green : T.text, fontSize: 10, fontWeight: '900' }}>
+                      {settings?.voiceCoachEnabled !== false ? 'ENABLED' : 'DISABLED'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
 
             <View style={styles.actionRow}>
+              {/* Feature Hub button — quick shortcut to compete & train features */}
+              {state === 'idle' && (
+                <TouchableOpacity
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowHub(true); }}
+                  style={[styles.secondaryBtn, { backgroundColor: isLight ? '#FFF9E6' : 'rgba(255,214,10,0.12)', borderColor: isLight ? '#FFE0B2' : 'rgba(255,214,10,0.3)', width: 48, marginRight: 2 }]}
+                >
+                  <Ionicons name="apps" size={20} color="#FFD60A" />
+                </TouchableOpacity>
+              )}
+
               {/* Bug report icon — always in dashboard */}
               <TouchableOpacity
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowBugReport(true); }}
@@ -1571,12 +1996,14 @@ export default function RunScreen() {
               </TouchableOpacity>
 
               {state === 'idle' ? (
-                <TouchableOpacity activeOpacity={0.8} onPress={startWithCountdown} style={[styles.primaryBtn, { backgroundColor: T.green }]}>
-                  <View style={styles.btnGrad}>
-                    <Ionicons name="play" size={20} color="#000" />
-                    <Text style={styles.btnText}>START RUN</Text>
-                  </View>
-                </TouchableOpacity>
+                <Animated.View style={{ flex: 1, transform: [{ scale: startBtnPulse }] }}>
+                  <TouchableOpacity activeOpacity={0.8} onPress={startWithCountdown} style={[styles.primaryBtn, { backgroundColor: T.green, width: '100%' }]}>
+                    <View style={styles.btnGrad}>
+                      <Ionicons name="play" size={20} color="#000" />
+                      <Text style={styles.btnText}>START RUN</Text>
+                    </View>
+                  </TouchableOpacity>
+                </Animated.View>
               ) : state === 'paused' ? (
                 <>
                   <TouchableOpacity onPress={resumeRun} disabled={isSaving} style={[styles.primaryBtn, { backgroundColor: T.green }]}>
@@ -1721,18 +2148,121 @@ export default function RunScreen() {
         </View>
       </Modal>
 
-      {/* Achievement unlock popup — Duolingo-style full modal */}
-      {runAchievementPopup && (
-        <AchievementModal
-          popup={runAchievementPopup}
-          queueCount={achievementQueue.length}
-          onDismiss={() => {
-            const remaining = achievementQueue.slice(1);
-            setAchievementQueue(remaining);
-            setRunAchievementPopup(remaining[0] ?? null);
-          }}
-        />
-      )}
+      {/* Achievement unlock toast — auto-advancing, non-blocking */}
+      <AchievementModal
+        popup={runAchievementPopup}
+        queueCount={achievementQueue.length}
+        onDismiss={() => {
+          const remaining = achievementQueue.slice(1);
+          setAchievementQueue(remaining);
+          setRunAchievementPopup(remaining[0] ?? null);
+        }}
+        onDismissAll={() => {
+          setAchievementQueue([]);
+          setRunAchievementPopup(null);
+        }}
+      />
+
+      {/* ════ FEATURE HUB MODAL ════ */}
+      <Modal visible={showHub} transparent animationType="slide" onRequestClose={() => setShowHub(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.78)', justifyContent: 'flex-end' }}>
+          {/* Tap backdrop to close */}
+          <TouchableOpacity style={StyleSheet.absoluteFillObject} activeOpacity={1} onPress={() => setShowHub(false)} />
+          
+          <View style={{
+            backgroundColor: isLight ? '#FFF' : '#0E0E12',
+            borderTopLeftRadius: 32, borderTopRightRadius: 32,
+            padding: 24, paddingBottom: insets.bottom + 24,
+            borderWidth: 1, borderColor: isLight ? '#E5E5EA' : 'rgba(255,255,255,0.08)',
+          }}>
+            {/* Drag Handle */}
+            <View style={{ width: 42, height: 5, borderRadius: 2.5, backgroundColor: isLight ? '#E5E5EA' : '#2C2C2E', alignSelf: 'center', marginBottom: 20 }} />
+
+            {/* Header */}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <View>
+                <Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 20, fontWeight: '900', letterSpacing: -0.5 }}>RunQuest Hub</Text>
+                <Text style={{ color: isLight ? '#666' : '#8E8E93', fontSize: 12, marginTop: 2 }}>COMPETE, TRAIN & REWARDS</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowHub(false)}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: isLight ? '#F2F2F7' : 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Ionicons name="close" size={20} color={isLight ? '#000' : '#FFF'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Grid of features */}
+            <View style={{ gap: 12 }}>
+              {[
+                [
+                  { id: 'QuestsShop',   label: 'Quests & Shop', desc: 'Daily quests & trail rewards', icon: 'sparkles',  color: T.gold || '#FFD60A', bg: 'rgba(255,214,10,0.1)' },
+                  { id: 'Leaderboard', label: 'Leaderboard',  desc: 'See global rankings',     icon: 'podium',    color: '#0A84FF', bg: 'rgba(10,132,255,0.1)' },
+                ],
+                [
+                  { id: 'Achievements',label: 'Achievements', desc: 'Badges & XP milestones',       icon: 'trophy',    color: '#FFD60A', bg: 'rgba(255,214,10,0.1)' },
+                  { id: 'Teams',       label: 'Teams & Guilds',desc: 'Form alliances to conquer',   icon: 'people',    color: '#BF5FFF', bg: 'rgba(191,95,255,0.1)' },
+                ],
+                [
+                  { id: 'Fitness',     label: 'Fitness Stats', desc: 'HR zones & run calories',     icon: 'flame',     color: '#FF453A', bg: 'rgba(255,69,58,0.1)' },
+                  { id: 'ChatBot',     label: 'RunBot Coach',  desc: 'Talk with your AI coach',    icon: 'hardware-chip', color: T.green || '#32D74B', bg: 'rgba(50,215,75,0.1)' },
+                ]
+              ].map((row, rowIndex) => (
+                <View key={rowIndex} style={{ flexDirection: 'row', gap: 12 }}>
+                  {row.map(item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        setShowHub(false);
+                        setTimeout(() => {
+                          // From the Run tab, navigation.getParent() = Tab Navigator
+                          // We must tell the Tab Navigator to switch to 'Profile'
+                          // AND pass the nested screen as a param
+                          try {
+                            const tabNav = navigation.getParent?.();
+                            if (tabNav) {
+                              tabNav.navigate('Profile', {
+                                screen: item.id,
+                                initial: false,
+                              });
+                            } else {
+                              // Fallback: try direct navigation (works if already in Profile tab)
+                              navigation.navigate('Profile' as any, {
+                                screen: item.id,
+                                initial: false,
+                              });
+                            }
+                          } catch (err) {
+                            console.warn('Hub navigation failed:', err);
+                          }
+                        }, 250);
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: isLight ? '#F9F9FC' : 'rgba(255,255,255,0.03)',
+                        borderRadius: 20,
+                        padding: 16,
+                        borderWidth: 1,
+                        borderColor: isLight ? '#E5E5EA' : 'rgba(255,255,255,0.05)',
+                        gap: 12,
+                      }}
+                    >
+                      <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name={item.icon as any} size={20} color={item.color} />
+                      </View>
+                      <View>
+                        <Text style={{ color: isLight ? '#000' : '#FFF', fontSize: 13, fontWeight: '900' }}>{item.label}</Text>
+                        <Text style={{ color: isLight ? '#666' : '#8E8E93', fontSize: 10, marginTop: 3, lineHeight: 14 }} numberOfLines={2}>{item.desc}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Clean Mode exit — round button on left side of screen, in clear map area */}
       {cleanMode && (

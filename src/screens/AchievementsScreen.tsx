@@ -14,7 +14,7 @@ import { computeAchievements, Achievement, Tier } from '../utils/computeAchievem
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
-const CARD_W = 160;
+const CARD_W = (width - 42) / 2;
 
 const TIER_CONFIG: Record<Tier, { color: string; label: string; ionicon: string; emoji: string }> = {
   locked:    { color: '#3A3A3C', label: 'Locked',    ionicon: 'lock-closed',     emoji: '🔒' },
@@ -219,12 +219,8 @@ function TierSection({
         </View>
       </View>
 
-      {/* Horizontal scroll of cards */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tierScrollContent}
-      >
+      {/* Grid cabinet layout of cards */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 16 }}>
         {items.map((item, idx) => (
           <AchievementCard
             key={item.id}
@@ -233,7 +229,7 @@ function TierSection({
             onPress={() => onCardPress(item)}
           />
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }

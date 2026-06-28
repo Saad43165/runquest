@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { ensureUserId, getDisplayName } from '../config/user';
 import { auth } from '../services/firebase';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/utils/ThemeContext';
@@ -15,6 +15,7 @@ import { useTerritories } from '../context/TerritoriesContext';
 import { OrbBackground } from '../components/OrbBackground';
 import { getUserTeam } from '../services/teamsService';
 import { followUser, unfollowUser, subscribeFollowing } from '../services/friendsService';
+import { getUserProfile } from '../services/authService';
 
 const { width } = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ type Rank = {
   teamId?: string;
   teamColor?: string;
   teamTag?: string;
+  isPremium?: boolean;
 };
 
 // ─── Avatar styles — 20 unique cartoon styles ─────────────────────────────────
@@ -69,12 +71,24 @@ function PodiumItem({ rank, item, isMe }: { rank: number; item: Rank; isMe: bool
   const c = colors[rank - 1] ?? T.muted;
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
+  const rankScale = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.spring(scaleAnim, {
       toValue: 1, delay: (rank - 1) * 100,
       useNativeDriver: true, tension: 80, friction: 9,
     }).start();
+
+    Animated.sequence([
+      Animated.delay((rank - 1) * 150 + 200),
+      Animated.spring(rankScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 6,
+      }),
+    ]).start();
+
     if (rank === 1) {
       Animated.loop(Animated.sequence([
         Animated.timing(glowAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
@@ -101,9 +115,12 @@ function PodiumItem({ rank, item, isMe }: { rank: number; item: Rank; isMe: bool
 
       <Avatar photoURL={null} ownerId={item.ownerId} color={c} size={rank === 1 ? 56 : 44} />
 
-      <Text style={{ color: isMe ? T.green : T.white, fontSize: 11, fontWeight: '800', marginTop: 6, marginBottom: 2, textAlign: 'center', maxWidth: 80 }} numberOfLines={1}>
-        {item.ownerName}
-      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 6, marginBottom: 2 }}>
+        <Text style={{ color: isMe ? T.green : T.white, fontSize: 11, fontWeight: '800', textAlign: 'center', maxWidth: item.isPremium ? 65 : 80 }} numberOfLines={1}>
+          {item.ownerName}
+        </Text>
+        {item.isPremium && <FontAwesome5 name="crown" size={8} color="#FFD60A" />}
+      </View>
       <Text style={{ color: T.text, fontSize: 10, marginBottom: 8 }}>
         {item.totalArea >= 1000 ? `${(item.totalArea / 1000).toFixed(1)}k` : Math.round(item.totalArea)} m²
       </Text>
@@ -111,7 +128,9 @@ function PodiumItem({ rank, item, isMe }: { rank: number; item: Rank; isMe: bool
       {/* Podium block */}
       <View style={[styles.podiumBlock, { height: h, borderColor: c + '50', backgroundColor: c + '18' }]}>
         <Text style={{ fontSize: rank === 1 ? 24 : 20 }}>{medals[rank - 1]}</Text>
-        <Text style={{ color: c, fontSize: rank === 1 ? 16 : 13, fontWeight: '900', marginTop: 4 }}>#{rank}</Text>
+        <Animated.Text style={{ color: c, fontSize: rank === 1 ? 16 : 13, fontWeight: '900', marginTop: 4, transform: [{ scale: rankScale }] }}>
+          #{rank}
+        </Animated.Text>
       </View>
     </Animated.View>
   );
@@ -119,10 +138,11 @@ function PodiumItem({ rank, item, isMe }: { rank: number; item: Rank; isMe: bool
 
 // ─── Rank Row — memoized for FlatList performance ────────────────────────────
 const RankRow = React.memo(function RankRow({
-  item, rank, isMe, isFollowing, onToggleFollow,
+  item, rank, isMe, isFollowing, onToggleFollow, maxArea,
 }: {
   item: Rank; rank: number; isMe: boolean;
   isFollowing?: boolean; onToggleFollow?: (uid: string) => void;
+  maxArea: number;
 }) {
   const { T } = useTheme();
   const anim = useRef(new Animated.Value(0)).current;
@@ -133,13 +153,19 @@ const RankRow = React.memo(function RankRow({
 
   const rankColors: Record<number, string> = { 1: T.gold, 2: '#C0C0C0', 3: '#CD7F32' };
   const rc = rankColors[rank] ?? T.text;
+  const pct = maxArea > 0 ? Math.min(100, Math.max(2, (item.totalArea / maxArea) * 100)) : 2;
 
   return (
     <Animated.View style={[
       styles.rankRow,
-      { backgroundColor: isMe ? T.green + '10' : T.card, borderColor: isMe ? T.green + '40' : T.border },
+      { backgroundColor: isMe ? T.green + '14' : T.card, borderColor: isMe ? T.green : T.border },
       { opacity: anim, transform: [{ translateX: anim.interpolate({ inputRange: [0, 1], outputRange: [24, 0] }) }] },
     ]}>
+      {/* Left neon green bar for personal rank highlighting */}
+      {isMe && (
+        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, borderTopLeftRadius: 18, borderBottomLeftRadius: 18, backgroundColor: T.green }} />
+      )}
+
       {/* Rank badge */}
       <View style={[styles.rankBadge, { backgroundColor: rc + '18', borderColor: rc + '30' }]}>
         <Text style={{ fontSize: 12, fontWeight: '900', color: rc }}>{rank}</Text>
@@ -154,6 +180,9 @@ const RankRow = React.memo(function RankRow({
           <Text style={{ color: isMe ? T.green : T.white, fontSize: 14, fontWeight: '800' }} numberOfLines={1}>
             {item.ownerName}
           </Text>
+          {item.isPremium && (
+            <FontAwesome5 name="crown" size={10} color="#FFD60A" />
+          )}
           {isMe && (
             <View style={[styles.youBadge, { backgroundColor: T.green + '20' }]}>
               <Text style={{ color: T.green, fontSize: 9, fontWeight: '900' }}>YOU</Text>
@@ -168,6 +197,10 @@ const RankRow = React.memo(function RankRow({
         <Text style={{ color: T.text, fontSize: 11, marginTop: 2 }}>
           {item.count} {item.count === 1 ? 'territory' : 'territories'} · {item.totalArea >= 1000 ? `${(item.totalArea / 1000).toFixed(1)}k` : Math.round(item.totalArea)} m²
         </Text>
+        {/* Progress bar vs #1 */}
+        <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 2, marginTop: 6, overflow: 'hidden', width: '95%' }}>
+          <View style={{ height: '100%', width: `${pct}%`, backgroundColor: isMe ? T.green : item.color || T.accent2 || '#00C6FF', borderRadius: 2 }} />
+        </View>
       </View>
 
       {/* Area */}
@@ -226,6 +259,20 @@ export default function LeaderboardScreen() {
   const [followingUids, setFollowingUids] = useState<Set<string>>(new Set());
   const headerAnim = useRef(new Animated.Value(0)).current;
 
+  const tabWidth = (width - 40) / 4;
+  const slideX = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const tabIndices = { alltime: 0, week: 1, month: 2, friends: 3 };
+    const idx = tabIndices[timeTab] ?? 0;
+    Animated.spring(slideX, {
+      toValue: idx * tabWidth,
+      useNativeDriver: true,
+      tension: 100,
+      friction: 11,
+    }).start();
+  }, [timeTab]);
+
   // Subscribe to following list
   useEffect(() => {
     const uid = auth.currentUser?.uid;
@@ -270,16 +317,27 @@ export default function LeaderboardScreen() {
       const name = await getDisplayName();
       setMyUid(uid);
 
-      const nameMap = new Map<string, { displayName: string; username: string; photoURL: string | null }>();
-      for (const t of territories) {
-        if (!nameMap.has(t.ownerId)) {
-          nameMap.set(t.ownerId, {
-            displayName: t.ownerDisplayName || 'Unknown Warrior',
-            username: t.ownerUsername || '',
-            photoURL: t.ownerPhotoURL || null,
+      const nameMap = new Map<string, { displayName: string; username: string; photoURL: string | null; isPremium?: boolean }>();
+      const ownerIds = Array.from(new Set(territories.map(t => t.ownerId)));
+      await Promise.all(ownerIds.map(async (ownerId) => {
+        try {
+          const profile = await getUserProfile(ownerId);
+          nameMap.set(ownerId, {
+            displayName: profile?.displayName || 'Unknown Warrior',
+            username: profile?.username || '',
+            photoURL: profile?.photoURL || null,
+            isPremium: profile?.isPremium || false,
+          });
+        } catch {
+          const t = territories.find(x => x.ownerId === ownerId);
+          nameMap.set(ownerId, {
+            displayName: t?.ownerDisplayName || 'Unknown Warrior',
+            username: t?.ownerUsername || '',
+            photoURL: t?.ownerPhotoURL || null,
+            isPremium: false,
           });
         }
-      }
+      }));
 
       const map = new Map<string, { area: number; count: number; color: string; photoURL?: string | null; teamId?: string; teamColor?: string; teamTag?: string }>();
       for (const t of territories) {
@@ -307,6 +365,7 @@ export default function LeaderboardScreen() {
             color: v.color,
             teamId: v.teamId,
             teamColor: v.teamColor,
+            isPremium: nameInfo?.isPremium || false,
           };
         })
         .sort((a, b) => b.totalArea - a.totalArea);
@@ -463,12 +522,20 @@ export default function LeaderboardScreen() {
             )}
 
             {/* Time filter tabs */}
-            <View style={[styles.timeTabs, { backgroundColor: T.card, borderColor: T.border }]}>
+            <View style={[styles.timeTabs, { backgroundColor: T.card, borderColor: T.border, position: 'relative' }]}>
+              <Animated.View style={{
+                position: 'absolute',
+                top: 4, left: 4, bottom: 4,
+                width: tabWidth,
+                backgroundColor: T.green + '22',
+                borderRadius: 12,
+                transform: [{ translateX: slideX }],
+              }} />
               {TIME_TABS.map(t => (
                 <TouchableOpacity
                   key={t.id}
                   onPress={() => handleTabChange(t.id)}
-                  style={[styles.timeTabBtn, timeTab === t.id && { backgroundColor: T.green + '20' }]}
+                  style={styles.timeTabBtn}
                   activeOpacity={0.8}
                 >
                   <Text style={{
@@ -496,7 +563,10 @@ export default function LeaderboardScreen() {
                 <Avatar photoURL={myData.ownerPhotoURL} ownerId={myData.ownerId} color={T.green} size={48} />
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: T.green, fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>YOUR STANDING</Text>
-                  <Text style={{ color: T.white, fontSize: 16, fontWeight: '900', marginTop: 3 }}>{myData.ownerName}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                    <Text style={{ color: T.white, fontSize: 16, fontWeight: '900' }}>{myData.ownerName}</Text>
+                    {myData.isPremium && <FontAwesome5 name="crown" size={12} color="#FFD60A" />}
+                  </View>
                   <Text style={{ color: T.text, fontSize: 12, marginTop: 2 }}>
                     {myData.count} territories · {(myData.totalArea / 1000).toFixed(2)}k m²
                   </Text>
@@ -557,6 +627,7 @@ export default function LeaderboardScreen() {
             isMe={item.ownerId === myUid}
             isFollowing={followingUids.has(item.ownerId)}
             onToggleFollow={handleToggleFollow}
+            maxArea={ranks[0]?.totalArea || 1}
           />
         )}
       />

@@ -213,6 +213,31 @@ const BOT_RESPONSES: BotEntry[] = [
     response: "Territory History 📜\n\nEvery territory tracks its conquest history!\n\n- When you conquer a territory, the previous owner is recorded\n- History is inherited — conquer a territory that was itself conquered and you get the full chain\n- View history in Territories → tap any territory → scroll down",
     navAction: { label: 'Open Territories', icon: 'map', screen: 'Territories', color: '#30B0C7' },
   },
+  {
+    patterns: ['history', 'run history', 'past runs', 'my runs', 'activities', 'stats history', 'open history', 'go to history', 'history screen', 'take me to history', 'view history'],
+    response: "Run History Dashboard 📊\n\nI can take you to your Run History! It has been modernized with:\n- **7-Day Distance Bar Chart**: see your daily mileage.\n- **35-Day Contribution Heatmap**: GitHub-style activity grid.\n- **Personal Bests Panel**: track your longest run, fastest pace, and largest claimed area.\n- **Run Streaks**: keep your daily running streak alive!",
+    navAction: { label: 'Open Run History', icon: 'time-outline', screen: 'RunHistory', color: '#32D74B' },
+  },
+  {
+    patterns: ['shop', 'quest shop', 'quests', 'loot', 'buy', 'gold', 'spend', 'open shop', 'go to shop', 'quests shop', 'shop screen', 'take me to shop', 'quests screen', 'view quests'],
+    response: "Quests & Loot Shop 🪙\n\n- Complete daily and weekly quests while running to earn gold.\n- Find and collect spawned loot items on the live map.\n- Spend your gold in the shop to unlock premium features and custom map styling!",
+    navAction: { label: 'Open Quests & Shop', icon: 'cart-outline', screen: 'QuestsShop', color: '#FFD60A' },
+  },
+  {
+    patterns: ['premium', 'upgrade', 'subscribe', 'pro', 'elite', 'buy premium', 'open premium', 'go to premium', 'get premium', 'elite tier'],
+    response: "Premium Membership 👑\n\nUnlock the full power of RunQuest:\n- **RunBot AI Coach**: chat with a custom fitness strategy AI assistant.\n- **Custom Map Styles**: 3D view, Satellite view, custom routes, and avatar customization.\n- **Advanced Analytics & Heatmaps**: full historical data unlock.",
+    navAction: { label: 'View Premium Tiers', icon: 'sparkles-outline', screen: 'Premium', color: '#BF5FFF' },
+  },
+  {
+    patterns: ['saad', 'developer', 'creator', 'who made this', 'open creator', 'go to creator', 'saad profile', 'creator screen'],
+    response: "Saad Ikram 💻\n\nRunQuest was created by Saad Ikram. You can check out the Creator profile to see achievements, credits, developer info, and support options!",
+    navAction: { label: 'Open Creator Screen', icon: 'code-working-outline', screen: 'Creator', color: '#0A84FF' },
+  },
+  {
+    patterns: ['profile', 'my account', 'avatar', 'user stats', 'open profile', 'go to profile', 'profile screen', 'my profile'],
+    response: "User Profile 👤\n\nYour main dashboard containing your team alliances, total gold, current running streak, recent achievements, and quick navigation shortcuts.",
+    navAction: { label: 'Open Profile Dashboard', icon: 'person-outline', screen: 'ProfileMain', color: '#5E5CE6' },
+  },
 ];
 
 function getBotEntry(input: string): BotEntry {
@@ -483,7 +508,11 @@ export default function ChatBotScreen() {
     // Tab screens live in the bottom tab navigator (parent of ProfileStack)
     const tabScreens = ['Run', 'Territories', 'Settings'];
     // Profile-stack screens are siblings in the same stack
-    const profileStackScreens = ['ProfileMain', 'Achievements', 'Leaderboard', 'Fitness', 'ChatBot', 'HelpSupport', 'Teams', 'ActivityFeed', 'BugReport', 'Creator', 'RunHistory'];
+    const profileStackScreens = [
+      'ProfileMain', 'Achievements', 'Leaderboard', 'Fitness', 'ChatBot',
+      'HelpSupport', 'Teams', 'ActivityFeed', 'BugReport', 'Creator',
+      'RunHistory', 'QuestsShop', 'Premium'
+    ];
 
     if (tabScreens.includes(action.screen)) {
       // Must navigate via the tab navigator (parent of this stack)
@@ -544,6 +573,11 @@ export default function ChatBotScreen() {
       'open teams', 'go to teams', 'take me to teams',
       'open activity', 'go to activity', 'take me to feed',
       'report bug', 'report a bug', 'bug report', 'found a bug',
+      'open history', 'go to history', 'run history', 'history screen', 'take me to history', 'view history',
+      'open shop', 'go to shop', 'quests shop', 'shop screen', 'take me to shop', 'quests screen', 'view quests',
+      'open premium', 'go to premium', 'get premium', 'subscribe', 'upgrade', 'elite tier',
+      'open creator', 'go to creator', 'saad profile', 'creator screen',
+      'open profile', 'go to profile', 'profile screen', 'my profile'
     ];
     const isDirectNav = directNavPatterns.some(p => lower.includes(p));
 

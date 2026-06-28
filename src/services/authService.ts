@@ -20,6 +20,7 @@ export interface UserProfile {
   avatarColor: string;
   photoURL?: string;
   createdAt: any;
+  isPremium?: boolean;
 }
 
 export type PrivateUserProfile = {

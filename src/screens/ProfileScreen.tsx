@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ScrollView, Alert, ActivityIndicator, Image, Modal, TextInput, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -21,12 +21,24 @@ import { exportProfileAsPDF } from '../utils/pdfExport';
 import { OrbBackground } from '../components/OrbBackground';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { useTerritories } from '../context/TerritoriesContext';
+import { usePremium } from '../context/PremiumContext';
 
-function getLevelInfo(totalDistM: number) {
+const RANK_TITLES = [
+  'Newcomer', 'Jogger', 'Trail Walker', 'Road Runner', 'Pace Setter',
+  'Speed Demon', 'Distance Hunter', 'Road Warrior', 'Endurance Beast',
+  'Iron Legs', 'Distance King', 'Century Sprinter', 'Elite Athlete',
+  'Marathon Legend', 'Ultra Runner', 'Road Conqueror', 'Transcendent',
+  'Eternal Runner', 'Mythic Warrior', 'Immortal Runner',
+];
+
+function getLevelInfo(totalDistM: number, totalXP = 0) {
   const km = totalDistM / 1000;
-  const level = Math.min(Math.floor(km / 10) + 1, 100); // cap at level 100
-  const progress = Math.min((km % 10) / 10, 1);         // clamp 0-1
-  return { level, progress, km };
+  const level = Math.min(Math.floor(km / 10) + 1, 100);
+  const progress = Math.min((km % 10) / 10, 1);
+  const rankIndex = Math.min(Math.floor(level / 5), RANK_TITLES.length - 1);
+  const rank = RANK_TITLES[rankIndex];
+  const xp = totalXP || Math.round(km * 10);
+  return { level, progress, km, rank, xp };
 }
 
 function EditProfileModal({ visible, onClose, initialName, initialUsername, initialBio, onSave }: {
@@ -182,6 +194,10 @@ export default function ProfileScreen() {
   const { T } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, profile, refreshProfile } = useAuth();
+  const { isPremium, status } = usePremium();
+  const userTier = status.tier || 'free';
+  const tierColor = userTier === 'elite' ? '#FFD60A' : userTier === 'pro' ? '#BF5FFF' : userTier === 'basic' ? '#00C6FF' : '#32D74B';
+  const tierLabel = userTier === 'elite' ? 'Elite Tier Active' : userTier === 'pro' ? 'Pro Tier Active' : userTier === 'basic' ? 'Basic Tier Active' : 'Premium Tier Active';
   const navigation = useNavigation<StackNavigationProp<ProfileStackParamList>>();
   const { territories } = useTerritories();
   const [history, setHistory] = useState<RunRecord[]>([]);
@@ -258,7 +274,7 @@ export default function ProfileScreen() {
         if (parent) { parent.navigate(route as any); return; }
       }
       navigation.navigate(route as any);
-    } catch {}
+    } catch { }
   };
 
   return (
@@ -336,7 +352,10 @@ export default function ProfileScreen() {
 
             {/* Name block */}
             <View style={{ flex: 1 }}>
-              <Text style={{ color: T.white, fontSize: 22, fontWeight: '900', letterSpacing: -0.5 }} numberOfLines={1}>{displayName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ color: T.white, fontSize: 22, fontWeight: '900', letterSpacing: -0.5 }} numberOfLines={1}>{displayName}</Text>
+                {isPremium && <FontAwesome5 name="crown" size={14} color={tierColor} />}
+              </View>
               {username ? <Text style={{ color: avatarCol, fontSize: 13, marginTop: 2, fontWeight: '700' }}>@{username}</Text> : null}
               {email ? <Text style={{ color: T.text, fontSize: 12, marginTop: 2 }}>{email}</Text> : null}
               {bio ? <Text style={{ color: T.text, fontSize: 12, marginTop: 4, lineHeight: 17 }} numberOfLines={2}>{bio}</Text> : (
@@ -358,184 +377,257 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          {/* Level card — Fitness card style */}
-          <View style={{ backgroundColor: T.card, borderRadius: 16, borderWidth: 1, borderTopWidth: 3, borderColor: T.border, borderTopColor: avatarCol, padding: 14, marginTop: 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: avatarCol + '20', alignItems: 'center', justifyContent: 'center' }}>
-                  <Ionicons name="flash" size={16} color={avatarCol} />
-                </View>
-                <View>
-                  <Text style={{ color: T.white, fontSize: 14, fontWeight: '900' }}>Level {level}</Text>
-                  <Text style={{ color: T.text, fontSize: 11 }}>{km.toFixed(1)} {unitLabel} total distance</Text>
-                </View>
-              </View>
-              <View style={{ backgroundColor: avatarCol + '20', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 }}>
-                <Text style={{ color: avatarCol, fontSize: 13, fontWeight: '900' }}>{Math.round(progress * 100)}%</Text>
-              </View>
-            </View>
-            <View style={{ height: 8, backgroundColor: T.muted, borderRadius: 4, overflow: 'hidden' }}>
-              <View style={{ height: '100%', width: `${progress * 100}%`, backgroundColor: avatarCol, borderRadius: 4 }} />
-            </View>
-            <Text style={{ color: T.text, fontSize: 10, marginTop: 6, textAlign: 'right' }}>
-              {Math.round((1 - progress) * 10)} {unitLabel} to Level {level + 1}
-            </Text>
-          </View>
-        </View>
-
-        {/* ── Stats strip — Fitness card style ── */}
-        <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 20, marginBottom: 28 }}>
-          {[
-            { label: 'RUNS', value: String(stats.runs), unit: 'total', color: avatarCol, icon: 'fitness-outline' },
-            { label: unitLabel, value: (stats.totalDistanceMeters / distMult).toFixed(1), unit: 'dist', color: T.accent2, icon: 'walk-outline' },
-            { label: 'ZONES', value: String(myTerritories.length), unit: 'owned', color: T.green, icon: 'map-outline' },
-            { label: 'BEST', value: (stats.longestDistanceMeters / distMult).toFixed(1), unit: unitLabel.toLowerCase(), color: T.gold, icon: 'trophy-outline' },
-          ].map((s, i) => (
-            <View key={i} style={{ flex: 1, backgroundColor: T.card, borderRadius: 14, borderWidth: 1, borderTopWidth: 3, borderColor: T.border, borderTopColor: s.color, padding: 10, alignItems: 'center', gap: 3 }}>
-              <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: s.color + '20', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name={s.icon as any} size={13} color={s.color} />
-              </View>
-              <Text style={{ color: T.white, fontSize: 16, fontWeight: '900', letterSpacing: -0.3 }}>{s.value}</Text>
-              <Text style={{ color: s.color, fontSize: 8, fontWeight: '800' }}>{s.unit}</Text>
-              <Text style={{ color: T.text, fontSize: 7, fontWeight: '700', letterSpacing: 0.5 }}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={{ paddingHorizontal: 20 }}>
-
-          {/* Expiry warning */}
-          {expiringSoon.length > 0 && (
-            <TouchableOpacity onPress={() => nav('Territories')}
-              style={{ backgroundColor: '#FF9F0A15', borderRadius: 16, borderWidth: 1, borderColor: '#FF9F0A40', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-              <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#FF9F0A20', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="time-outline" size={18} color="#FF9F0A" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: '#FF9F0A', fontSize: 13, fontWeight: '900' }}>{expiringSoon.length} {expiringSoon.length === 1 ? 'territory' : 'territories'} expiring soon!</Text>
-                <Text style={{ color: '#FF9F0A', fontSize: 11, opacity: 0.8, marginTop: 1 }}>Tap to defend before they disappear</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color="#FF9F0A" />
-            </TouchableOpacity>
-          )}
-
-          {/* COMPETE section */}
-          <SectionCard title="COMPETE">
-            <MenuRow icon="podium" label="Leaderboard" desc="See global rankings" color="#0A84FF" onPress={() => nav('Leaderboard')} />
-            <Divider />
-            <MenuRow icon="trophy" label="Achievements" desc="Badges & XP rewards" color="#FFD60A" onPress={() => nav('Achievements')} />
-            <Divider />
-            <MenuRow icon="people" label="Teams & Alliances" desc="Form a team, conquer together" color="#BF5FFF" onPress={() => nav('Teams')} />
-            <Divider />
-            <MenuRow icon="flash" label="Activity Feed" desc="Live conquest events" color="#FF453A" onPress={() => nav('ActivityFeed')} />
-          </SectionCard>
-
-          {/* TRAIN section */}
-          <SectionCard title="TRAIN">
-            <MenuRow icon="flame" label="Fitness Stats" desc="Heart rate zones & calories" color="#FF453A" onPress={() => nav('Fitness')} />
-            <Divider />
-            <MenuRow icon="hardware-chip" label="RunBot AI" desc="Your AI running assistant" color={T.green} onPress={() => nav('ChatBot')} />
-          </SectionCard>
-
-          {/* Activity — split into Loop Runs and Open Runs */}
-          {history.length > 0 && (() => {
-            const loops = history.filter(r => r.areaSqMeters > 500 && r.perimeterMeters > 200);
-            const opens = history.filter(r => !(r.areaSqMeters > 500 && r.perimeterMeters > 200));
-
-            const RunItem = ({ run, color, icon }: { run: typeof history[0]; color: string; icon: string }) => {
-              const distVal = (run.distanceMeters / distMult).toFixed(2);
-              const mins = Math.round(run.durationSec / 60);
-              const isLoop = color === T.green;
-              return (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 16 }}>
-                  <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: color + '18', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name={icon as any} size={16} color={color} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: T.white, fontSize: 13, fontWeight: '700' }}>
-                      {new Date(run.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                    </Text>
-                    <Text style={{ color: T.text, fontSize: 11, marginTop: 1 }}>
-                      {mins} min{isLoop && run.areaSqMeters > 0 ? ` · ${Math.round(run.areaSqMeters).toLocaleString()} m²` : ''}
-                    </Text>
-                  </View>
-                  <Text style={{ color, fontSize: 14, fontWeight: '900' }}>{distVal} {unitLabel}</Text>
-                </View>
-              );
-            };
-
+          {/* Level / XP card — animated */}
+          {(() => {
+            const xpBarRef = React.useRef(new Animated.Value(0)).current;
+            const levelScaleRef = React.useRef(new Animated.Value(0.8)).current;
+            React.useEffect(() => {
+              Animated.parallel([
+                Animated.spring(levelScaleRef, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+                Animated.timing(xpBarRef, { toValue: progress, duration: 1100, useNativeDriver: false }),
+              ]).start();
+            }, [progress]);
             return (
-              <>
-                {/* Loop Runs — territory-eligible */}
-                {loops.length > 0 && (
-                  <View style={{ marginBottom: 20 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: T.green }} />
-                      <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>LOOP RUNS</Text>
-                      <View style={{ backgroundColor: T.green + '30', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Text style={{ color: T.green, fontSize: 9, fontWeight: '900' }}>TERRITORY ELIGIBLE</Text>
-                      </View>
-                    </View>
-                    <View style={{ backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.green + '30', overflow: 'hidden' }}>
-                      {loops.slice(0, 2).map((run, i) => (
-                        <View key={run.id}>
-                          <RunItem run={run} color={T.green} icon="flag" />
-                          {i < Math.min(loops.length, 2) - 1 && <Divider />}
-                        </View>
-                      ))}
-                    </View>
+              <View style={{ backgroundColor: '#141417', borderRadius: 20, borderWidth: 1, borderTopWidth: 3, borderColor: 'rgba(255,255,255,0.07)', borderTopColor: avatarCol, padding: 18, marginTop: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                  {/* Level badge */}
+                  <Animated.View style={[{
+                    width: 62, height: 62, borderRadius: 18,
+                    backgroundColor: avatarCol + '20', borderWidth: 2, borderColor: avatarCol + '60',
+                    alignItems: 'center', justifyContent: 'center',
+                    transform: [{ scale: levelScaleRef }],
+                  }]}>
+                    <Text style={{ color: avatarCol, fontSize: 22, fontWeight: '900', letterSpacing: -1 }}>{level}</Text>
+                    <Text style={{ color: avatarCol + '80', fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginTop: -2 }}>LEVEL</Text>
+                  </Animated.View>
+                  {/* Info */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#FFF', fontSize: 17, fontWeight: '900', letterSpacing: -0.3 }}>{level === 100 ? 'MAX LEVEL' : level === 100 ? 'Capped' : getLevelInfo(stats.totalDistanceMeters).rank}</Text>
+                    <Text style={{ color: '#8E8E93', fontSize: 11, marginTop: 2 }}>{getLevelInfo(stats.totalDistanceMeters).km.toFixed(1)} {unitLabel} total · {getLevelInfo(stats.totalDistanceMeters).xp.toLocaleString()} XP</Text>
                   </View>
-                )}
-
-                {/* Open Runs — fitness only */}
-                {opens.length > 0 && (
-                  <View style={{ marginBottom: 20 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#00C6FF' }} />
-                      <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>OPEN RUNS</Text>
-                      <View style={{ backgroundColor: '#00C6FF30', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Text style={{ color: '#00C6FF', fontSize: 9, fontWeight: '900' }}>FITNESS ONLY</Text>
-                      </View>
-                    </View>
-                    <View style={{ backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: '#00C6FF25', overflow: 'hidden' }}>
-                      {opens.slice(0, 2).map((run, i) => (
-                        <View key={run.id}>
-                          <RunItem run={run} color="#00C6FF" icon="walk-outline" />
-                          {i < Math.min(opens.length, 2) - 1 && <Divider />}
-                        </View>
-                      ))}
-                    </View>
+                  {/* Progress % */}
+                  <View style={{ backgroundColor: avatarCol + '20', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6 }}>
+                    <Text style={{ color: avatarCol, fontSize: 14, fontWeight: '900' }}>{Math.round(progress * 100)}%</Text>
                   </View>
-                )}
-
-                {/* See all link — always visible */}
-                <TouchableOpacity
-                  onPress={() => nav('RunHistory')}
-                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, marginBottom: 20, borderRadius: 14, backgroundColor: T.card, borderWidth: 1, borderTopWidth: 3, borderColor: T.border, borderTopColor: T.green }}
-                >
-                  <Ionicons name="time-outline" size={16} color={T.green} />
-                  <Text style={{ color: T.green, fontSize: 14, fontWeight: '800' }}>Full Run History ({history.length})</Text>
-                  <Ionicons name="arrow-forward" size={16} color={T.green} />
-                </TouchableOpacity>
-              </>
+                </View>
+                {/* XP bar */}
+                <View style={{ height: 10, backgroundColor: '#222', borderRadius: 5, overflow: 'hidden' }}>
+                  <Animated.View style={[
+                    { height: '100%', borderRadius: 5, backgroundColor: avatarCol },
+                    { width: xpBarRef.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }) },
+                  ]} />
+                </View>
+                <Text style={{ color: '#555', fontSize: 10, marginTop: 7, fontWeight: '700' }}>
+                  {Math.round((1 - progress) * 10)} {unitLabel} to Level {Math.min(level + 1, 100)}
+                </Text>
+              </View>
             );
           })()}
 
-          {/* SUPPORT section */}
-          <SectionCard title="SUPPORT">
-            <MenuRow icon="help-circle" label="Help & Support" desc="FAQs, guides & contact" color={T.accent2} onPress={() => nav('HelpSupport')} />
-          </SectionCard>
-
-          {/* Sign out */}
-          <TouchableOpacity onPress={() => setShowLogout(true)}
-            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16, backgroundColor: T.red + '12', borderWidth: 1, borderColor: T.red + '30', marginBottom: 8 }}>
-            <Ionicons name="log-out-outline" size={18} color={T.red} />
-            <Text style={{ color: T.red, fontSize: 15, fontWeight: '800' }}>Sign Out</Text>
-          </TouchableOpacity>
-
+          {/* Premium status */}
+          {!isPremium ? (
+            <TouchableOpacity
+              onPress={() => nav('Premium')}
+              activeOpacity={0.85}
+              style={{ borderRadius: 16, marginTop: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: '#BF5FFF80' }}
+            >
+              <LinearGradient
+                colors={['#BF5FFF28', '#7B2FBE15']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                style={{ padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+              >
+                <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#BF5FFF30', alignItems: 'center', justifyContent: 'center' }}>
+                  <FontAwesome5 name="crown" size={18} color="#FFD60A" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '900' }}>Get RunQuest Premium ✦</Text>
+                  <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 }}>Unlock all avatars, path colors, and benefits</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#BF5FFF" />
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ borderRadius: 16, marginTop: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: tierColor + '40', backgroundColor: tierColor + '0d', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: tierColor + '20', alignItems: 'center', justifyContent: 'center' }}>
+                <FontAwesome5 name="crown" size={18} color={tierColor} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: tierColor, fontSize: 13, fontWeight: '900' }}>{tierLabel} ✦</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 }}>Thank you for supporting RunQuest!</Text>
+              </View>
+              <Ionicons name="checkmark-circle" size={18} color={tierColor} />
+            </View>
+          )}
         </View>
-      </ScrollView>
-    </View>
+
+        {/* ── Stats strip — animated count-up tiles ── */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 20, marginBottom: 28 }}>
+          {[
+            { label: 'RUNS',  value: stats.runs,                                           decimals: 0, unit: 'total',                  color: avatarCol, icon: 'fitness-outline'   },
+            { label: unitLabel, value: stats.totalDistanceMeters / distMult,               decimals: 1, unit: 'dist',                   color: T.accent2, icon: 'walk-outline'      },
+            { label: 'ZONES', value: myTerritories.length,                                 decimals: 0, unit: 'owned',                  color: T.green,   icon: 'map-outline'       },
+            { label: 'BEST',  value: stats.longestDistanceMeters / distMult,               decimals: 1, unit: unitLabel.toLowerCase(),   color: T.gold,    icon: 'trophy-outline'    },
+          ].map((s, i) => {
+            const countAnim = React.useRef(new Animated.Value(0)).current;
+            const [display, setDisplay] = React.useState('0');
+            React.useEffect(() => {
+              countAnim.setValue(0);
+              Animated.timing(countAnim, { toValue: s.value, duration: 900 + i * 100, useNativeDriver: false }).start();
+              const id = countAnim.addListener(({ value }) => setDisplay(value.toFixed(s.decimals)));
+              return () => countAnim.removeListener(id);
+            }, [s.value]);
+            return (
+              <View key={i} style={{ flex: 1, backgroundColor: '#141417', borderRadius: 16, borderWidth: 1, borderTopWidth: 3, borderColor: 'rgba(255,255,255,0.06)', borderTopColor: s.color, padding: 12, alignItems: 'center', gap: 4 }}>
+                <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: s.color + '20', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name={s.icon as any} size={13} color={s.color} />
+                </View>
+                <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '900', letterSpacing: -0.5 }}>{display}</Text>
+                <Text style={{ color: s.color, fontSize: 8, fontWeight: '800', letterSpacing: 0.5 }}>{s.unit}</Text>
+                <Text style={{ color: '#555', fontSize: 7, fontWeight: '700', letterSpacing: 0.5 }}>{s.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+
+  <View style={{ paddingHorizontal: 20 }}>
+
+    {/* Expiry warning */}
+    {expiringSoon.length > 0 && (
+      <TouchableOpacity onPress={() => nav('Territories')}
+        style={{ backgroundColor: '#FF9F0A15', borderRadius: 16, borderWidth: 1, borderColor: '#FF9F0A40', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#FF9F0A20', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="time-outline" size={18} color="#FF9F0A" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: '#FF9F0A', fontSize: 13, fontWeight: '900' }}>{expiringSoon.length} {expiringSoon.length === 1 ? 'territory' : 'territories'} expiring soon!</Text>
+          <Text style={{ color: '#FF9F0A', fontSize: 11, opacity: 0.8, marginTop: 1 }}>Tap to defend before they disappear</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#FF9F0A" />
+      </TouchableOpacity>
+    )}
+
+    {/* REWARDS section */}
+    <SectionCard title="QUESTS & REWARDS">
+      <MenuRow icon="sparkles" label="Quests & Shop Hub" desc="Daily quests, item inventory & trail colors" color={T.gold} onPress={() => nav('QuestsShop')} />
+    </SectionCard>
+
+    {/* COMPETE section */}
+    <SectionCard title="COMPETE">
+      <MenuRow icon="podium" label="Leaderboard" desc="See global rankings" color="#0A84FF" onPress={() => nav('Leaderboard')} />
+      <Divider />
+      <MenuRow icon="trophy" label="Achievements" desc="Badges & XP rewards" color="#FFD60A" onPress={() => nav('Achievements')} />
+      <Divider />
+      <MenuRow icon="people" label="Teams & Alliances" desc="Form a team, conquer together" color="#BF5FFF" onPress={() => nav('Teams')} />
+      <Divider />
+      <MenuRow icon="flash" label="Activity Feed" desc="Live conquest events" color="#FF453A" onPress={() => nav('ActivityFeed')} />
+    </SectionCard>
+
+    {/* TRAIN section */}
+    <SectionCard title="TRAIN">
+      <MenuRow icon="flame" label="Fitness Stats" desc="Heart rate zones & calories" color="#FF453A" onPress={() => nav('Fitness')} />
+      <Divider />
+      <MenuRow icon="hardware-chip" label="RunBot AI" desc="Your AI running assistant" color={T.green} onPress={() => nav('ChatBot')} />
+    </SectionCard>
+
+    {/* Activity — split into Loop Runs and Open Runs */}
+    {history.length > 0 && (() => {
+      const loops = history.filter(r => r.areaSqMeters > 500 && r.perimeterMeters > 200);
+      const opens = history.filter(r => !(r.areaSqMeters > 500 && r.perimeterMeters > 200));
+
+      const RunItem = ({ run, color, icon }: { run: typeof history[0]; color: string; icon: string }) => {
+        const distVal = (run.distanceMeters / distMult).toFixed(2);
+        const mins = Math.round(run.durationSec / 60);
+        const isLoop = color === T.green;
+        return (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, paddingHorizontal: 16 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: color + '18', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={icon as any} size={16} color={color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: T.white, fontSize: 13, fontWeight: '700' }}>
+                {new Date(run.createdAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+              </Text>
+              <Text style={{ color: T.text, fontSize: 11, marginTop: 1 }}>
+                {mins} min{isLoop && run.areaSqMeters > 0 ? ` · ${Math.round(run.areaSqMeters).toLocaleString()} m²` : ''}
+              </Text>
+            </View>
+            <Text style={{ color, fontSize: 14, fontWeight: '900' }}>{distVal} {unitLabel}</Text>
+          </View>
+        );
+      };
+
+      return (
+        <>
+          {/* Loop Runs — territory-eligible */}
+          {loops.length > 0 && (
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: T.green }} />
+                <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>LOOP RUNS</Text>
+                <View style={{ backgroundColor: T.green + '30', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ color: T.green, fontSize: 9, fontWeight: '900' }}>TERRITORY ELIGIBLE</Text>
+                </View>
+              </View>
+              <View style={{ backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: T.green + '30', overflow: 'hidden' }}>
+                {loops.slice(0, 2).map((run, i) => (
+                  <View key={run.id}>
+                    <RunItem run={run} color={T.green} icon="flag" />
+                    {i < Math.min(loops.length, 2) - 1 && <Divider />}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Open Runs — fitness only */}
+          {opens.length > 0 && (
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8, paddingHorizontal: 4 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#00C6FF' }} />
+                <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 1.5 }}>OPEN RUNS</Text>
+                <View style={{ backgroundColor: '#00C6FF30', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                  <Text style={{ color: '#00C6FF', fontSize: 9, fontWeight: '900' }}>FITNESS ONLY</Text>
+                </View>
+              </View>
+              <View style={{ backgroundColor: T.card, borderRadius: 20, borderWidth: 1, borderColor: '#00C6FF25', overflow: 'hidden' }}>
+                {opens.slice(0, 2).map((run, i) => (
+                  <View key={run.id}>
+                    <RunItem run={run} color="#00C6FF" icon="walk-outline" />
+                    {i < Math.min(opens.length, 2) - 1 && <Divider />}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* See all link — always visible */}
+          <TouchableOpacity
+            onPress={() => nav('RunHistory')}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, marginBottom: 20, borderRadius: 14, backgroundColor: T.card, borderWidth: 1, borderTopWidth: 3, borderColor: T.border, borderTopColor: T.green }}
+          >
+            <Ionicons name="time-outline" size={16} color={T.green} />
+            <Text style={{ color: T.green, fontSize: 14, fontWeight: '800' }}>Full Run History ({history.length})</Text>
+            <Ionicons name="arrow-forward" size={16} color={T.green} />
+          </TouchableOpacity>
+        </>
+      );
+    })()}
+
+    {/* SUPPORT section */}
+    <SectionCard title="SUPPORT">
+      <MenuRow icon="help-circle" label="Help & Support" desc="FAQs, guides & contact" color={T.accent2} onPress={() => nav('HelpSupport')} />
+    </SectionCard>
+
+    {/* Sign out */}
+    <TouchableOpacity onPress={() => setShowLogout(true)}
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 16, backgroundColor: T.red + '12', borderWidth: 1, borderColor: T.red + '30', marginBottom: 8 }}>
+      <Ionicons name="log-out-outline" size={18} color={T.red} />
+      <Text style={{ color: T.red, fontSize: 15, fontWeight: '800' }}>Sign Out</Text>
+    </TouchableOpacity>
+
+  </View>
+      </ScrollView >
+    </View >
   );
 }
 

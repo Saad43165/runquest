@@ -15,13 +15,16 @@ export type Achievement = {
 };
 
 export function computeAchievements(history: RunRecord[]): Achievement[] {
-  const runs = history.length;
-  const totalDist = history.reduce((a, r) => a + (r.distanceMeters || 0), 0);
-  const totalArea = history.reduce((a, r) => a + (r.areaSqMeters || 0), 0);
-  const loops = history.filter(r => (r.areaSqMeters || 0) > 100).length;
-  const totalDur = history.reduce((a, r) => a + (r.durationSec || 0), 0);
+  // Filter out ghost/accidental runs — must be at least 50m and 10 seconds
+  const validRuns = history.filter(r => (r.distanceMeters || 0) >= 50 && (r.durationSec || 0) >= 10);
 
-  const days = Array.from(new Set(history.map(r => new Date(r.createdAt).toDateString()))).sort();
+  const runs = validRuns.length;
+  const totalDist = validRuns.reduce((a, r) => a + (r.distanceMeters || 0), 0);
+  const totalArea = validRuns.reduce((a, r) => a + (r.areaSqMeters || 0), 0);
+  const loops = validRuns.filter(r => (r.areaSqMeters || 0) > 100).length;
+  const totalDur = validRuns.reduce((a, r) => a + (r.durationSec || 0), 0);
+
+  const days = Array.from(new Set(validRuns.map(r => new Date(r.createdAt).toDateString()))).sort();
   let maxStreak = 0, streak = 0;
   for (let i = 0; i < days.length; i++) {
     if (i === 0) { streak = 1; }
@@ -32,8 +35,8 @@ export function computeAchievements(history: RunRecord[]): Achievement[] {
     if (streak > maxStreak) maxStreak = streak;
   }
 
-  const morningRuns = history.filter(r => new Date(r.createdAt).getHours() < 8).length;
-  const bestRun = history.reduce((max, r) => r.distanceMeters > max ? r.distanceMeters : max, 0);
+  const morningRuns = validRuns.filter(r => new Date(r.createdAt).getHours() < 8).length;
+  const bestRun = validRuns.reduce((max, r) => r.distanceMeters > max ? r.distanceMeters : max, 0);
 
   function make(
     id: string, title: string, description: string, icon: string,

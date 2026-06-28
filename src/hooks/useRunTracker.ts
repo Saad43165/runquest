@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { LatLng, RunState } from '../types';
 import { isClosedLoop, pathDistance, pathPerimeter, polygonAreaSqMeters } from '../utils/geometry';
 import { addRun } from '../services/history';
@@ -175,7 +175,7 @@ type Tracker = {
   startRun: () => Promise<void>;
   pauseRun: () => Promise<void>;
   resumeRun: () => Promise<void>;
-  stopRun: () => Promise<void>;
+  stopRun: () => Promise<string | null>;
   reset: () => void;
   recenter: () => Promise<void>;
   closedLoop: boolean;
@@ -264,8 +264,26 @@ export function useRunTracker(): Tracker {
 
     (async () => {
       try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted' || !mounted) return;
+        let status = 'denied';
+        try {
+          const res = await Location.requestForegroundPermissionsAsync();
+          status = res.status;
+        } catch {}
+
+        if (status !== 'granted' || !mounted) {
+          if (Platform.OS === 'web' && mounted) {
+            dispatch({
+              type: 'UPDATE_REGION',
+              region: {
+                latitude: 37.7749,
+                longitude: -122.4194,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
+              },
+            });
+          }
+          return;
+        }
 
         // Try Balanced first (fast, ~1-3s) then fall back to High if it fails
         let loc: Location.LocationObject | null = null;
@@ -279,6 +297,19 @@ export function useRunTracker(): Tracker {
           try {
             loc = await Location.getLastKnownPositionAsync();
           } catch {}
+        }
+
+        if (!loc && Platform.OS === 'web') {
+          loc = {
+            coords: {
+              latitude: 37.7749,
+              longitude: -122.4194,
+              accuracy: 5,
+              altitude: 0,
+              heading: 0,
+              speed: 0,
+            },
+          } as any;
         }
 
         if (!mounted || !loc) return;
@@ -326,6 +357,52 @@ export function useRunTracker(): Tracker {
     }
   }, [internal.path, internal.status]);
 
+  // Web/Simulated Run Path Generator
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (internal.status !== 'running') return;
+
+    // Start simulated movement from current region or a default center
+    const baseLat = internal.region?.latitude ?? 37.7749;
+    const baseLng = internal.region?.longitude ?? -122.4194;
+
+    let step = 0;
+    
+    const interval = setInterval(() => {
+      const totalSteps = 24;
+      const angle = (step / totalSteps) * 2 * Math.PI;
+      const radius = 0.0015; // about 150-200 meters radius
+      const offsetLat = Math.sin(angle) * radius;
+      const offsetLng = Math.cos(angle) * radius;
+
+      const lat = baseLat - radius + offsetLat;
+      const lng = baseLng + offsetLng;
+
+      dispatch({
+        type: 'UPDATE_LOCATION',
+        point: { latitude: lat, longitude: lng },
+        accuracy: 5,
+        heading: (angle * 180) / Math.PI,
+        altitude: 50,
+      });
+
+      // Update region to follow the simulated run
+      dispatch({
+        type: 'UPDATE_REGION',
+        region: {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        },
+      });
+
+      step++;
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [internal.status]);
+
   // ── Auto-pause ────────────────────────────────────────────────────────────
   // Pauses after 8s of no movement (speed < 0.5 m/s).
   // Resets timer on every location update. 8s prevents frustrating pauses at lights.
@@ -369,10 +446,12 @@ export function useRunTracker(): Tracker {
       }
     }
 
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Location access is needed to start tracking.');
-      return;
+    if (Platform.OS !== 'web') {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Location access is needed to start tracking.');
+        return;
+      }
     }
 
     dispatch({ type: 'START', settings });
@@ -415,6 +494,7 @@ export function useRunTracker(): Tracker {
     } catch {}
 
     try {
+      if (Platform.OS === 'web') return; // Skip watchPosition on web
       locationSub.current?.remove();
       locationSub.current = await Location.watchPositionAsync(
         {
@@ -525,6 +605,7 @@ export function useRunTracker(): Tracker {
     } catch {}
 
     try {
+      if (Platform.OS === 'web') return; // Skip watchPosition on web
       locationSub.current = await Location.watchPositionAsync(
         {
           accuracy: settings.locationAccuracy === 'High' ? Location.Accuracy.High : Location.Accuracy.Balanced,
@@ -559,11 +640,13 @@ export function useRunTracker(): Tracker {
   }, [internal.status, internal.region, scheduleAutoPause]);
 
   const stopRun = useCallback(async () => {
-    if (internal.isSaving) return;
+    if (internal.isSaving) return null;
     clearAutoPauseTimer();
 
     locationSub.current?.remove();
     locationSub.current = null;
+
+    let savedId: string | null = null;
 
     if (internal.path.length > 1 && internal.startedAt != null) {
       dispatch({ type: 'SET_SAVING', isSaving: true });
@@ -577,9 +660,10 @@ export function useRunTracker(): Tracker {
       const worthSaving = distance >= 100 && durationSec >= 30;
 
       if (worthSaving) {
+        const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         try {
           await addRun({
-            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            id: runId,
             createdAt: Date.now(),
             distanceMeters: Math.round(distance),
             durationSec,
@@ -588,6 +672,7 @@ export function useRunTracker(): Tracker {
             points: internal.path,
             altitudePoints: internal.altitudePoints.length > 0 ? internal.altitudePoints : undefined,
           });
+          savedId = runId;
         } catch (err) {
           console.error('Failed to save run:', err);
           Alert.alert('Save Error', 'Run tracked but could not be saved due to network error.');
@@ -604,6 +689,8 @@ export function useRunTracker(): Tracker {
     Location.hasStartedLocationUpdatesAsync(BG_TASK)
       .then(running => { if (running) Location.stopLocationUpdatesAsync(BG_TASK).catch(() => {}); })
       .catch(() => {});
+
+    return savedId;
   }, [internal]);
 
   const reset = useCallback(() => {

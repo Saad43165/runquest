@@ -30,6 +30,9 @@ export type Settings = {
   avatarIndex: number;
   pathStyle: 'solid' | 'dashed' | 'glow';
   pathColor: 'green' | 'blue' | 'orange' | 'purple' | 'red' | 'white';
+  pacerEnabled: boolean;
+  pacerPaceMinPerKm: number;
+  voiceCoachEnabled: boolean;
 };
 
 const KEY = 'runquest:settings';
@@ -60,6 +63,9 @@ const DEFAULTS: Settings = {
   avatarIndex: 0,
   pathStyle: 'solid',
   pathColor: 'green',
+  pacerEnabled: false,
+  pacerPaceMinPerKm: 5.5,
+  voiceCoachEnabled: true,
 };
 
 export async function getSettings(): Promise<Settings> {

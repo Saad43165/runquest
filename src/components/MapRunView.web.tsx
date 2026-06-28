@@ -21,9 +21,10 @@ type Props = {
   tileStyle?: 'default' | 'dark' | '3d';
   accuracyMeters?: number | null;
   headingDeg?: number | null;
+  items?: { id: string; type: 'gem' | 'shield' | 'boost' | 'chest'; latitude: number; longitude: number; collected: boolean }[];
 };
 
-// Tile sources — '3d' uses free Esri satellite imagery (no token needed)
+// ─── Tile sources — '3d' uses free Esri satellite imagery (no token needed)
 const TILES = {
   default: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   dark:    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -38,6 +39,113 @@ function Recenter({ region, tileStyle }: { region: Props['region']; tileStyle: P
     const zoom = tileStyle === '3d' ? 17 : 15;
     map.setView([region.latitude, region.longitude], map.getZoom() || zoom);
   }, [region, map, tileStyle]);
+  return null;
+}
+
+// ─── Loot Marker ──────────────────────────────────────────────────────────────
+function LootMarker({ item }: { item: NonNullable<Props['items']>[number] }) {
+  const map = useMap();
+  const icon = useMemo(() => {
+    const svgs = {
+      gem: `
+        <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="gemGradWeb" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#00F0FF" />
+              <stop offset="100%" stop-color="#7000FF" />
+            </linearGradient>
+            <filter id="glowWeb1" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+          </defs>
+          <polygon points="32,6 54,22 44,58 20,58 10,22" fill="url(#gemGradWeb)" stroke="#FFF" stroke-width="2.5" filter="url(#glowWeb1)" />
+          <polygon points="32,6 32,58" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" />
+          <polygon points="10,22 54,22" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" />
+        </svg>
+      `,
+      shield: `
+        <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="shieldGradWeb" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#00FF87" />
+              <stop offset="100%" stop-color="#60EFFF" />
+            </linearGradient>
+            <filter id="glowWeb2" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+          </defs>
+          <path d="M32 6 C42 6, 52 12, 54 24 C54 42, 32 58, 32 58 C32 58, 10 42, 10 24 C12 12, 22 6, 32 6 Z" fill="url(#shieldGradWeb)" stroke="#FFF" stroke-width="2.5" filter="url(#glowWeb2)" />
+          <path d="M32 14 C38 14, 44 18, 45 26 C45 38, 32 48, 32 48 C32 48, 19 38, 19 26 C20 18, 26 14, 32 14 Z" fill="none" stroke="rgba(255,255,255,0.5)" stroke-width="1.5" stroke-dasharray="2,2" />
+        </svg>
+      `,
+      boost: `
+        <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="boostGradWeb" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FF9F0A" />
+              <stop offset="100%" stop-color="#FF375F" />
+            </linearGradient>
+            <filter id="glowWeb3" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+          </defs>
+          <path d="M38 4 L14 34 L30 34 L22 60 L50 26 L32 26 Z" fill="url(#boostGradWeb)" stroke="#FFF" stroke-width="2.5" filter="url(#glowWeb3)" />
+        </svg>
+      `,
+      chest: `
+        <svg width="36" height="36" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="chestGradWeb" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#FFD60A" />
+              <stop offset="100%" stop-color="#FF9F0A" />
+            </linearGradient>
+            <filter id="glowWeb4" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+            </filter>
+          </defs>
+          <rect x="8" y="24" width="48" height="32" rx="6" fill="url(#chestGradWeb)" stroke="#FFF" stroke-width="2.5" filter="url(#glowWeb4)" />
+          <rect x="6" y="12" width="52" height="12" rx="3" fill="#FFE066" stroke="#FFF" stroke-width="2.5" filter="url(#glowWeb4)" />
+          <circle cx="32" cy="28" r="2.5" fill="#FFD60A" />
+        </svg>
+      `
+    };
+    return L.divIcon({
+      className: '',
+      html: `
+        <div style="
+          width: 36px;
+          height: 36px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          filter: drop-shadow(0 4px 8px rgba(0,0,0,0.5));
+          transform: translate(-50%, -50%);
+          animation: floatAnimation 2.2s infinite ease-in-out;
+        ">
+          ${svgs[item.type] || '❓'}
+        </div>
+        <style>
+          @keyframes floatAnimation {
+            0%, 100% { transform: translate(-50%, -50%) translateY(0) scale(1); }
+            50% { transform: translate(-50%, -50%) translateY(-8px) scale(1.08); }
+          }
+        </style>
+      `,
+      iconSize: [36, 36],
+      iconAnchor: [18, 18],
+    });
+  }, [item.type]);
+
+  useEffect(() => {
+    if (item.collected) return;
+    const marker = L.marker([item.latitude, item.longitude], { icon }).addTo(map);
+    return () => { marker.remove(); };
+  }, [item.latitude, item.longitude, item.collected, icon, map]);
+
   return null;
 }
 
@@ -130,6 +238,7 @@ export default function MapRunView({
   tileStyle    = 'dark',
   accuracyMeters,
   headingDeg,
+  items,
 }: Props) {
   if (!region) {
     return (
@@ -174,6 +283,10 @@ export default function MapRunView({
             positions={p.points.map(pt => [pt.latitude, pt.longitude])}
             pathOptions={{ color: p.color, weight: 2.5, fillColor: p.color, fillOpacity: 0.22 }}
           />
+        ))}
+
+        {items && items.map(item => (
+          <LootMarker key={item.id} item={item} />
         ))}
       </MapContainer>
     </div>

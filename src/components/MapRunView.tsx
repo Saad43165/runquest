@@ -19,6 +19,7 @@ export type MapRunViewProps = {
   avatarIndex?: number;
   pathStyle?: 'solid' | 'dashed' | 'glow';
   pathColor?: string;
+  items?: { id: string; type: 'gem' | 'shield' | 'boost' | 'chest'; latitude: number; longitude: number; collected: boolean }[];
 };
 
 export type MapRunViewRef = {

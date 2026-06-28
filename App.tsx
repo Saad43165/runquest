@@ -17,6 +17,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 import { ThemeProvider, ThemeName, useTheme } from '@/utils/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { TerritoriesProvider } from './src/context/TerritoriesContext';
+import { PremiumProvider, usePremium } from './src/context/PremiumContext';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { auth } from './src/services/firebase';
 
@@ -41,6 +42,7 @@ import { reloadUser, logoutUser } from './src/services/authService';
 import { confirmAction } from './src/utils/AlertUtils';
 import { getFriendlyErrorMessage } from './src/utils/ErrorUtils';
 import { NotificationService } from './src/services/notificationService';
+import { ToastContainer } from './src/services/ToastService';
 
 // Map preloading is native-only (web uses Leaflet component)
 const mapPreload =
@@ -155,6 +157,7 @@ function SplashTimer({ onDone }: { onDone: () => void }) {
 // ─── Tab bar selector ─────────────────────────────────────────────────────────
 function TabBarSelector(props: any) {
   const [navbarStyle, setNavbarStyle] = React.useState<string>('pill');
+  const { isPremium } = usePremium();
 
   React.useEffect(() => {
     // Load initial value
@@ -166,9 +169,11 @@ function TabBarSelector(props: any) {
     return unsub;
   }, []);
 
-  if (navbarStyle === 'minimal') return <MinimalTabBar {...props} />;
-  if (navbarStyle === 'glass')   return <GlassTabBar {...props} />;
-  if (navbarStyle === 'curved')  return <CurvedTabBar {...props} />;
+  if (isPremium) {
+    if (navbarStyle === 'minimal') return <MinimalTabBar {...props} />;
+    if (navbarStyle === 'glass')   return <GlassTabBar {...props} />;
+    if (navbarStyle === 'curved')  return <CurvedTabBar {...props} />;
+  }
   return <FloatingPillTabBar {...props} />;
 }
 
@@ -359,6 +364,9 @@ const linking: any = {
           Fitness: 'fitness',
           ChatBot: 'chat',
           HelpSupport: 'help',
+          Teams: 'teams',
+          QuestsShop: 'quests',
+          Premium: 'premium',
         },
       },
     },
@@ -404,11 +412,15 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider initial={savedTheme}>
         <AuthProvider>
-          <ErrorBoundary fallbackMessage="RunQuest encountered an error. Please restart the app.">
-            <NavigationContainer linking={linking}>
-              <AppContent />
-            </NavigationContainer>
-          </ErrorBoundary>
+          <PremiumProvider>
+            <ErrorBoundary fallbackMessage="RunQuest encountered an error. Please restart the app.">
+              <NavigationContainer linking={linking}>
+                <AppContent />
+              </NavigationContainer>
+              {/* Global in-app toast — sits above all screens */}
+              <ToastContainer />
+            </ErrorBoundary>
+          </PremiumProvider>
         </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

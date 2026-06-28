@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Switch,
-  Animated, ScrollView, Dimensions,
+  Animated, ScrollView, Dimensions, Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { SvgXml } from 'react-native-svg';
 import { getSettings, updateSettings, Settings } from '../config/settings';
 import { clearHistory } from '../services/history';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,12 +14,29 @@ import * as Haptics from 'expo-haptics';
 import { logoutUser } from '../services/authService';
 import { getFriendlyErrorMessage } from '../utils/ErrorUtils';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useIsFocused } from '@react-navigation/native';
+import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { OrbBackground } from '../components/OrbBackground';
 import { ConfirmDialog } from '../components/ConfirmDialog';
 import { MusicWarningDialog } from '../components/MusicWarningDialog';
+import { usePremium } from '../context/PremiumContext';
+import { setDeveloperOverrideTier } from '../services/premiumService';
 
 const { width } = Dimensions.get('window');
+
+function goToPremium(navigation: any) {
+  try {
+    const parent = navigation.getParent?.();
+    if (parent) {
+      parent.navigate('Profile', { screen: 'Premium' });
+    } else {
+      navigation.navigate('Profile', { screen: 'Premium' });
+    }
+  } catch {
+    try {
+      navigation.navigate('Premium');
+    } catch {}
+  }
+}
 
 const THEME_DATA: { key: ThemeName; label: string; emoji: string; primary: string; surface: string }[] = [
   { key: 'midnight', label: 'Dark',   emoji: '🌑', primary: '#00C6FF', surface: '#1C1C1E' },
@@ -152,6 +170,10 @@ function MapTab({ settings, update }: { settings: Settings; update: (p: Partial<
 
 function RunTab({ settings, update, onShowMusicWarning }: { settings: Settings; update: (p: Partial<Settings>) => void; onShowMusicWarning: () => void }) {
   const { T } = useTheme();
+  const { status } = usePremium();
+  const userTier = status.tier || 'free';
+  const navigation = useNavigation<any>();
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.tabContent}>
       <SectionLabel title="UNITS" />
@@ -176,6 +198,85 @@ function RunTab({ settings, update, onShowMusicWarning }: { settings: Settings; 
         </Row>
         <Row label="Auto-Pause" desc="Pause when you stop moving" icon="pause-circle-outline" color="#00C6FF" last>
           <Switch value={settings.autoPause} onValueChange={v => update({ autoPause: v })} trackColor={{ true: T.green, false: T.muted }} thumbColor="#FFF" />
+        </Row>
+      </Card>
+
+      <SectionLabel title="PREMIUM COACHING" />
+      <Card>
+        {/* Virtual Pacer toggle */}
+        <Row label="Virtual Pacer" desc="Race against a target speed" icon="speedometer-outline" color="#BF5FFF">
+          {(() => {
+            const isLocked = userTier !== 'pro' && userTier !== 'elite';
+            const meta = isLocked ? TIER_META.pro : null;
+            return (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {isLocked && meta && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: meta.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: meta.color + '50' }}>
+                    <Ionicons name="lock-closed" size={11} color={meta.color} />
+                    <Text style={{ color: meta.color, fontSize: 10, fontWeight: '900' }}>{meta.label}</Text>
+                  </View>
+                )}
+                <Switch
+                  value={settings.pacerEnabled && !isLocked}
+                  onValueChange={v => {
+                    if (isLocked) {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                      Alert.alert(
+                        'Unlock Required',
+                        'The Virtual Pacer is exclusive to RunQuest PRO and ELITE members. Upgrade now to race against your target pace!',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'View Plans', onPress: () => goToPremium(navigation) }
+                        ]
+                      );
+                      return;
+                    }
+                    update({ pacerEnabled: v });
+                  }}
+                  trackColor={{ true: T.green, false: T.muted }}
+                  thumbColor="#FFF"
+                />
+              </View>
+            );
+          })()}
+        </Row>
+
+        {/* AI Voice Coach toggle */}
+        <Row label="AI Voice Coach" desc="Audio progress & territory announcements" icon="mic-outline" color={T.green} last>
+          {(() => {
+            const isLocked = userTier !== 'pro' && userTier !== 'elite';
+            const meta = isLocked ? TIER_META.pro : null;
+            return (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                {isLocked && meta && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: meta.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: meta.color + '50' }}>
+                    <Ionicons name="lock-closed" size={11} color={meta.color} />
+                    <Text style={{ color: meta.color, fontSize: 10, fontWeight: '900' }}>{meta.label}</Text>
+                  </View>
+                )}
+                <Switch
+                  value={settings.voiceCoachEnabled !== false && !isLocked}
+                  onValueChange={v => {
+                    if (isLocked) {
+                      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                      Alert.alert(
+                        'Unlock Required',
+                        'The AI Voice Coach is exclusive to RunQuest PRO and ELITE members. Upgrade now to get real-time audio pace alerts!',
+                        [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'View Plans', onPress: () => goToPremium(navigation) }
+                        ]
+                      );
+                      return;
+                    }
+                    update({ voiceCoachEnabled: v });
+                  }}
+                  trackColor={{ true: T.green, false: T.muted }}
+                  thumbColor="#FFF"
+                />
+              </View>
+            );
+          })()}
         </Row>
       </Card>
 
@@ -255,6 +356,46 @@ function RunTab({ settings, update, onShowMusicWarning }: { settings: Settings; 
 
 type NavbarStyle = 'pill' | 'minimal' | 'glass' | 'curved';
 
+function getRequiredTierForAvatar(index: number): 'basic' | 'pro' | 'elite' | null {
+  if (index < 4) return null;
+  if (index < 8) return 'basic';
+  if (index < 12) return 'pro';
+  return 'elite';
+}
+
+function getRequiredTierForPathStyle(styleId: string): 'basic' | 'pro' | 'elite' | null {
+  if (styleId === 'solid' || styleId === 'dashed') return null;
+  return 'pro';
+}
+
+function getRequiredTierForPathColor(colorId: string): 'basic' | 'pro' | 'elite' | null {
+  if (colorId === 'green') return null;
+  if (colorId === 'blue') return 'basic';
+  if (colorId === 'orange' || colorId === 'purple') return 'pro';
+  return 'elite';
+}
+
+function getRequiredTierForNavbarStyle(styleId: string): 'basic' | 'pro' | 'elite' | null {
+  if (styleId === 'pill') return null;
+  if (styleId === 'minimal') return 'basic';
+  if (styleId === 'glass') return 'pro';
+  return 'elite';
+}
+
+function isTierLocked(required: 'basic' | 'pro' | 'elite' | null, userTier: string): boolean {
+  if (!required) return false;
+  if (userTier === 'elite') return false;
+  if (userTier === 'pro') return required === 'elite';
+  if (userTier === 'basic') return required === 'pro' || required === 'elite';
+  return true;
+}
+
+const TIER_META = {
+  basic: { label: 'BASIC', color: '#00C6FF', bg: 'rgba(0,198,255,0.15)' },
+  pro: { label: 'PRO', color: '#BF5FFF', bg: 'rgba(191,95,255,0.15)' },
+  elite: { label: 'ELITE', color: '#FFD60A', bg: 'rgba(255,214,10,0.15)' },
+};
+
 // ─── Profile Tab — avatar picker + path style ─────────────────────────────────
 
 // 16 warrior SVG previews (same as map, but rendered as React Native SVG-in-Image via data URI)
@@ -267,44 +408,314 @@ const WARRIOR_COLORS = [
   '#FF6B35','#FFD60A','#00C6FF','#CC44FF','#32D74B','#FF9F0A','#FFD60A','#888899',
 ];
 
-// Same SVGs as the map — 48x64 standing person characters
+// Same SVGs as the map — 48x64 standing person characters (Premium Neon silhouettes)
 const WARRIOR_SVGS = [
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#C8956C"/><rect x="16" y="8" width="16" height="9" rx="2" fill="#1A1A2E"/><rect x="16" y="13" width="16" height="4" fill="#00FF87" rx="1"/><circle cx="20" cy="12" r="2" fill="#00FF87"/><circle cx="28" cy="12" r="2" fill="#00FF87"/><rect x="15" y="21" width="18" height="22" rx="4" fill="#1A1A2E"/><rect x="15" y="21" width="18" height="5" fill="#00FF87" rx="2"/><rect x="7" y="22" width="8" height="17" rx="4" fill="#1A1A2E"/><rect x="33" y="22" width="8" height="17" rx="4" fill="#1A1A2E"/><rect x="16" y="43" width="7" height="18" rx="3" fill="#1A1A2E"/><rect x="25" y="43" width="7" height="18" rx="3" fill="#1A1A2E"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#E8C49A"/><rect x="14" y="7" width="20" height="11" rx="4" fill="#8A9BB0"/><rect x="16" y="9" width="16" height="6" rx="2" fill="#C0C0C0"/><circle cx="20" cy="12" r="1.5" fill="#1C2333"/><circle cx="28" cy="12" r="1.5" fill="#1C2333"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#8A9BB0"/><rect x="14" y="21" width="20" height="5" fill="#C0C0C0" rx="2"/><line x1="24" y1="26" x2="24" y2="44" stroke="#C0C0C0" stroke-width="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#8A9BB0"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#8A9BB0"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#6B7A8D"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#6B7A8D"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="14" r="8" fill="#D4A574"/><polygon points="24,1 16,15 32,15" fill="#6B2FA0"/><ellipse cx="24" cy="15" rx="11" ry="3" fill="#8B3FC0"/><circle cx="20" cy="14" r="1.5" fill="#BF5FFF"/><circle cx="28" cy="14" r="1.5" fill="#BF5FFF"/><path d="M14 22 Q24 19 34 22 L32 45 L16 45 Z" fill="#6B2FA0"/><rect x="14" y="22" width="20" height="5" fill="#BF5FFF" rx="2"/><rect x="6" y="23" width="8" height="18" rx="4" fill="#6B2FA0"/><rect x="34" y="23" width="8" height="18" rx="4" fill="#6B2FA0"/><rect x="17" y="45" width="6" height="17" rx="3" fill="#4A1A7A"/><rect x="25" y="45" width="6" height="17" rx="3" fill="#4A1A7A"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="8" fill="#C8956C"/><ellipse cx="24" cy="9" rx="11" ry="5" fill="#2D5A27"/><rect x="13" y="9" width="22" height="5" fill="#1A3A15" rx="2"/><circle cx="20" cy="13" r="1.5" fill="#1A3A15"/><circle cx="28" cy="13" r="1.5" fill="#1A3A15"/><rect x="15" y="20" width="18" height="23" rx="3" fill="#2D5A27"/><rect x="15" y="20" width="18" height="5" fill="#32D74B" rx="2"/><rect x="7" y="21" width="8" height="17" rx="4" fill="#2D5A27"/><rect x="33" y="21" width="8" height="17" rx="4" fill="#2D5A27"/><rect x="16" y="43" width="7" height="19" rx="3" fill="#1A3A15"/><rect x="25" y="43" width="7" height="19" rx="3" fill="#1A3A15"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#D4845A"/><rect x="14" y="7" width="20" height="11" rx="3" fill="#8B0000"/><circle cx="20" cy="12" r="2" fill="#FF453A"/><circle cx="28" cy="12" r="2" fill="#FF453A"/><path d="M20 16 L24 18 L28 16" stroke="#FF453A" stroke-width="1.5" fill="none"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#8B0000"/><rect x="14" y="21" width="20" height="5" fill="#FF453A" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#8B0000"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#8B0000"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#6B0000"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#6B0000"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="9" fill="#1A2A3E"/><rect x="14" y="7" width="20" height="12" rx="4" fill="#0D1F35"/><rect x="15" y="9" width="18" height="7" rx="3" fill="#00C6FF" opacity="0.5"/><circle cx="20" cy="12" r="2" fill="#00C6FF"/><circle cx="28" cy="12" r="2" fill="#00C6FF"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#0D1F35"/><line x1="14" y1="27" x2="34" y2="27" stroke="#00C6FF" stroke-width="1.5"/><line x1="14" y1="33" x2="34" y2="33" stroke="#00C6FF" stroke-width="1"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#0D1F35"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#0D1F35"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#0A1828"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#0A1828"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#C8956C"/><path d="M13 9 L24 3 L35 9 L33 16 L15 16 Z" fill="#2A1800"/><rect x="20" y="10" width="8" height="3" rx="1" fill="#FFD60A"/><circle cx="20" cy="13" r="1.5" fill="#2A1800"/><rect x="22" y="11" width="7" height="5" rx="1" fill="#1A1000"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#5C3A1E"/><rect x="14" y="21" width="20" height="5" fill="#8B5E3C" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#5C3A1E"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#5C3A1E"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#3A2010"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#3A2010"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><ellipse cx="24" cy="13" rx="11" ry="12" fill="#D0D8F0" opacity="0.95"/><circle cx="19" cy="12" r="3" fill="#1A1A3E"/><circle cx="29" cy="12" r="3" fill="#1A1A3E"/><circle cx="19" cy="12" r="1.5" fill="#6080FF"/><circle cx="29" cy="12" r="1.5" fill="#6080FF"/><path d="M13 22 Q24 18 35 22 L35 52 Q31 48 24 52 Q17 48 13 52 Z" fill="#D0D8F0" opacity="0.9"/><path d="M13 22 Q24 18 35 22 L35 27 Q24 23 13 27 Z" fill="#A0B0D0" opacity="0.9"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#C8956C"/><rect x="21" y="3" width="6" height="9" rx="3" fill="#1A0A0A"/><rect x="14" y="9" width="20" height="9" rx="2" fill="#1A0A0A"/><circle cx="20" cy="13" r="1.5" fill="#FF6B35"/><circle cx="28" cy="13" r="1.5" fill="#FF6B35"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#1A0A0A"/><rect x="14" y="21" width="20" height="5" fill="#FF6B35" rx="2"/><line x1="24" y1="26" x2="24" y2="44" stroke="#FF6B35" stroke-width="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#1A0A0A"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#1A0A0A"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#0A0505"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#0A0505"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#D4A574"/><rect x="14" y="7" width="20" height="11" rx="3" fill="#2A2A55"/><path d="M10 11 L14 7" stroke="#FFD60A" stroke-width="3" stroke-linecap="round"/><path d="M38 11 L34 7" stroke="#FFD60A" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="13" r="1.5" fill="#2A2A55"/><circle cx="28" cy="13" r="1.5" fill="#2A2A55"/><path d="M18 17 Q24 20 30 17" fill="#8B6914" stroke="#8B6914" stroke-width="1"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#2A2A55"/><rect x="14" y="21" width="20" height="5" fill="#FFD60A" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#2A2A55"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#2A2A55"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#1A1A3A"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#1A1A3A"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="11" fill="#E8E8F0"/><circle cx="24" cy="12" r="8" fill="#1A1A3E"/><rect x="17" y="8" width="14" height="9" rx="4" fill="#00C6FF" opacity="0.5"/><circle cx="20" cy="12" r="1.5" fill="#00C6FF"/><circle cx="28" cy="12" r="1.5" fill="#00C6FF"/><rect x="13" y="23" width="22" height="22" rx="5" fill="#E8E8F0"/><rect x="18" y="28" width="12" height="8" rx="2" fill="#C0C8D8"/><rect x="5" y="24" width="8" height="18" rx="4" fill="#E8E8F0"/><rect x="35" y="24" width="8" height="18" rx="4" fill="#E8E8F0"/><rect x="16" y="45" width="7" height="17" rx="3" fill="#C0C8D8"/><rect x="25" y="45" width="7" height="17" rx="3" fill="#C0C8D8"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="15" r="8" fill="#D4A574"/><polygon points="24,1 16,16 32,16" fill="#4A0080"/><ellipse cx="24" cy="16" rx="12" ry="3" fill="#6B00B0"/><circle cx="20" cy="15" r="2" fill="#BF5FFF"/><circle cx="28" cy="15" r="2" fill="#BF5FFF"/><path d="M14 23 Q24 20 34 23 L32 45 L16 45 Z" fill="#4A0080"/><rect x="14" y="23" width="20" height="5" fill="#BF5FFF" rx="2"/><rect x="6" y="24" width="8" height="18" rx="4" fill="#4A0080"/><rect x="34" y="24" width="8" height="18" rx="4" fill="#4A0080"/><rect x="17" y="45" width="6" height="17" rx="3" fill="#2A0050"/><rect x="25" y="45" width="6" height="17" rx="3" fill="#2A0050"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="12" r="8" fill="#C8956C"/><path d="M13 8 Q24 3 35 8 L33 17 L15 17 Z" fill="#1A4A1A"/><circle cx="20" cy="13" r="1.5" fill="#32D74B"/><circle cx="28" cy="13" r="1.5" fill="#32D74B"/><rect x="15" y="20" width="18" height="23" rx="3" fill="#1A4A1A"/><rect x="15" y="20" width="18" height="5" fill="#32D74B" rx="2"/><rect x="7" y="21" width="8" height="17" rx="4" fill="#1A4A1A"/><rect x="33" y="21" width="8" height="17" rx="4" fill="#1A4A1A"/><path d="M40 8 Q46 16 40 24" stroke="#8B5E3C" stroke-width="2.5" fill="none"/><line x1="40" y1="8" x2="40" y2="24" stroke="#8B5E3C" stroke-width="1.5"/><rect x="17" y="43" width="6" height="19" rx="3" fill="#0A2A0A"/><rect x="25" y="43" width="6" height="19" rx="3" fill="#0A2A0A"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#D4A574"/><rect x="15" y="9" width="18" height="9" rx="2" fill="#5C3A00"/><circle cx="19" cy="12" r="3.5" fill="#FF9F0A" opacity="0.7"/><circle cx="29" cy="12" r="3.5" fill="#FF9F0A" opacity="0.7"/><circle cx="19" cy="12" r="1.5" fill="#1A0A00"/><circle cx="29" cy="12" r="1.5" fill="#1A0A00"/><path d="M14 21 Q24 18 34 21 L32 44 L16 44 Z" fill="#8B4500"/><rect x="14" y="21" width="20" height="5" fill="#FF9F0A" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#8B4500"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#8B4500"/><circle cx="40" cy="28" r="5" fill="#32D74B" opacity="0.9"/><rect x="17" y="44" width="6" height="18" rx="3" fill="#5C3A00"/><rect x="25" y="44" width="6" height="18" rx="3" fill="#5C3A00"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="4" r="5" fill="none" stroke="#FFD60A" stroke-width="2.5" opacity="0.9"/><circle cx="24" cy="13" r="8" fill="#E8C49A"/><rect x="14" y="8" width="20" height="10" rx="3" fill="#B8860B"/><circle cx="20" cy="13" r="1.5" fill="#1A1400"/><circle cx="28" cy="13" r="1.5" fill="#1A1400"/><rect x="14" y="21" width="20" height="23" rx="3" fill="#B8860B"/><rect x="14" y="21" width="20" height="5" fill="#FFD60A" rx="2"/><line x1="24" y1="26" x2="24" y2="44" stroke="#FFD60A" stroke-width="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#B8860B"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#B8860B"/><rect x="16" y="44" width="7" height="18" rx="3" fill="#8B6500"/><rect x="25" y="44" width="7" height="18" rx="3" fill="#8B6500"/></svg>',
-  '<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="13" r="8" fill="#B07850"/><path d="M13 9 Q24 4 35 9 L33 18 L15 18 Z" fill="#1A1A1A"/><circle cx="20" cy="13" r="1.5" fill="#888"/><circle cx="28" cy="13" r="1.5" fill="#888"/><path d="M14 21 Q24 18 34 21 L34 44 L14 44 Z" fill="#1A1A1A"/><rect x="14" y="21" width="20" height="5" fill="#444" rx="2"/><rect x="6" y="22" width="8" height="18" rx="4" fill="#1A1A1A"/><rect x="34" y="22" width="8" height="18" rx="4" fill="#1A1A1A"/><line x1="8" y1="26" x2="12" y2="36" stroke="#AAA" stroke-width="2.5" stroke-linecap="round"/><line x1="40" y1="26" x2="36" y2="36" stroke="#AAA" stroke-width="2.5" stroke-linecap="round"/><rect x="17" y="44" width="6" height="18" rx="3" fill="#0A0A0A"/><rect x="25" y="44" width="6" height="18" rx="3" fill="#0A0A0A"/></svg>',
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="ninjaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1A1A2E"/>
+        <stop offset="100%" stop-color="#0A0A15"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="16" width="20" height="28" rx="6" fill="url(#ninjaGrad)" stroke="#00FF87" stroke-width="1.5"/>
+    <circle cx="24" cy="24" r="8" fill="#111"/>
+    <rect x="17" y="21" width="14" height="4" rx="2" fill="#00FF87"/>
+    <circle cx="21" cy="23" r="1" fill="#FFF"/>
+    <circle cx="27" cy="23" r="1" fill="#FFF"/>
+    <path d="M14 28 L34 28 L30 36 L18 36 Z" fill="#00FF87" opacity="0.8"/>
+    <path d="M10 32 C12 28, 14 28, 14 32 L11 46 C11 46, 9 46, 8 42 Z" fill="#1A1A2E"/>
+    <path d="M38 32 C36 28, 34 28, 34 32 L37 46 C37 46, 39 46, 40 42 Z" fill="#1A1A2E"/>
+    <line x1="12" y1="12" x2="18" y2="20" stroke="#00FF87" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="36" y1="12" x2="30" y2="20" stroke="#00FF87" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#0A0A15" stroke="#00FF87" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#0A0A15" stroke="#00FF87" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="knightGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#E2F5FA"/>
+        <stop offset="100%" stop-color="#8A9BB0"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="16" width="20" height="28" rx="5" fill="url(#knightGrad)" stroke="#00C6FF" stroke-width="1.5"/>
+    <path d="M22 18 L26 18 L26 25 L31 25 L31 28 L17 28 L17 25 L22 25 Z" fill="#1A1A2E"/>
+    <line x1="24" y1="18" x2="24" y2="28" stroke="#00C6FF" stroke-width="1.5"/>
+    <path d="M24 16 C20 10, 28 6, 32 10 C32 10, 28 14, 24 16 Z" fill="#00C6FF"/>
+    <circle cx="12" cy="30" r="4.5" fill="#E2F5FA" stroke="#00C6FF" stroke-width="1"/>
+    <circle cx="36" cy="30" r="4.5" fill="#E2F5FA" stroke="#00C6FF" stroke-width="1"/>
+    <line x1="24" y1="32" x2="24" y2="42" stroke="#00C6FF" stroke-width="2"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#8A9BB0" stroke="#00C6FF" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#8A9BB0" stroke="#00C6FF" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="mageGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#8B3FC0"/>
+        <stop offset="100%" stop-color="#3A1A7A"/>
+      </linearGradient>
+    </defs>
+    <path d="M24 12 L14 26 L14 46 L34 46 L34 26 Z" fill="url(#mageGrad)" stroke="#BF5FFF" stroke-width="1.5"/>
+    <path d="M24 16 L17 26 L31 26 Z" fill="#0D0D1A"/>
+    <circle cx="21" cy="23" r="1.5" fill="#BF5FFF"/>
+    <circle cx="27" cy="23" r="1.5" fill="#BF5FFF"/>
+    <path d="M14 28 L24 34 L34 28" fill="none" stroke="#FFD60A" stroke-width="1.5"/>
+    <line x1="38" y1="12" x2="38" y2="52" stroke="#8B5E3C" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="38" cy="8" r="5" fill="#BF5FFF" opacity="0.9"/>
+    <circle cx="38" cy="8" r="2.5" fill="#FFF"/>
+    <rect x="17" y="46" width="5" height="14" rx="2" fill="#3A1A7A"/>
+    <rect x="26" y="46" width="5" height="14" rx="2" fill="#3A1A7A"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="scoutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#2D5A27"/>
+        <stop offset="100%" stop-color="#142B11"/>
+      </linearGradient>
+    </defs>
+    <path d="M24 14 C15 14, 14 22, 14 26 L14 44 L34 44 L34 26 C34 22, 33 14, 24 14 Z" fill="url(#scoutGrad)" stroke="#32D74B" stroke-width="1.5"/>
+    <rect x="17" y="20" width="14" height="6" rx="3" fill="#111" stroke="#32D74B" stroke-width="1"/>
+    <circle cx="21" cy="23" r="1.5" fill="#32D74B"/>
+    <circle cx="27" cy="23" r="1.5" fill="#32D74B"/>
+    <path d="M14 28 L24 24 L34 28" fill="none" stroke="#32D74B" stroke-width="1.5"/>
+    <rect x="9" y="16" width="4" height="12" rx="1" fill="#FF9F0A" transform="rotate(-20,9,16)"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#142B11" stroke="#32D74B" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#142B11" stroke="#32D74B" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bersGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FF3B30"/>
+        <stop offset="100%" stop-color="#800A0A"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="url(#bersGrad)" stroke="#FF453A" stroke-width="1.5"/>
+    <path d="M14 20 Q8 12, 10 6 Q14 12, 15 20 Z" fill="#FFE066"/>
+    <path d="M34 20 Q40 12, 38 6 Q34 12, 33 20 Z" fill="#FFE066"/>
+    <polygon points="18,25 23,25 21,28" fill="#FF453A"/>
+    <polygon points="30,25 25,25 27,28" fill="#FF453A"/>
+    <line x1="20" y1="32" x2="28" y2="32" stroke="#FF453A" stroke-width="1.5"/>
+    <line x1="22" y1="30" x2="22" y2="34" stroke="#FF453A" stroke-width="1"/>
+    <line x1="26" y1="30" x2="26" y2="34" stroke="#FF453A" stroke-width="1"/>
+    <polygon points="10,28 6,24 12,32" fill="#FF453A"/>
+    <polygon points="38,28 42,24 36,32" fill="#FF453A"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#800A0A" stroke="#FF453A" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#800A0A" stroke="#FF453A" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="cyberGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#00C6FF"/>
+        <stop offset="100%" stop-color="#0A1828"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="16" width="20" height="28" rx="6" fill="url(#cyberGrad)" stroke="#00C6FF" stroke-width="1.5"/>
+    <rect x="16" y="21" width="16" height="7" rx="2" fill="#00C6FF" opacity="0.8"/>
+    <line x1="17" y1="24" x2="31" y2="24" stroke="#FFF" stroke-width="1.5"/>
+    <line x1="14" y1="22" x2="10" y2="16" stroke="#00C6FF" stroke-width="2"/>
+    <line x1="34" y1="22" x2="38" y2="16" stroke="#00C6FF" stroke-width="2"/>
+    <circle cx="24" cy="35" r="3" fill="none" stroke="#00C6FF" stroke-width="1.5"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#0A1828" stroke="#00C6FF" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#0A1828" stroke="#00C6FF" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="pirateGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFD60A"/>
+        <stop offset="100%" stop-color="#3A2D00"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="#1C1C1C" stroke="#FFD60A" stroke-width="1.5"/>
+    <circle cx="24" cy="24" r="8" fill="#F3D1B4"/>
+    <line x1="16" y1="20" x2="32" y2="26" stroke="#000" stroke-width="2.5"/>
+    <circle cx="22" cy="23" r="3.5" fill="#000"/>
+    <circle cx="27" cy="23" r="1.5" fill="#FFD60A"/>
+    <path d="M10 18 Q24 8, 38 18 Z" fill="#000" stroke="#FFD60A" stroke-width="1.5"/>
+    <circle cx="24" cy="14" r="2.5" fill="#FFD60A"/>
+    <rect x="21" y="34" width="6" height="4" fill="#FFD60A"/>
+    <path d="M10 32 Q6 36, 10 40" fill="none" stroke="#C0C0C0" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#1C1C1C" stroke="#FFD60A" stroke-width="1"/>
+    <line x1="29" y1="44" x2="29" y2="60" stroke="#8B5E3C" stroke-width="3" stroke-linecap="round"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="ghostGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#E2F5FA"/>
+        <stop offset="100%" stop-color="#8A9BB0"/>
+      </linearGradient>
+    </defs>
+    <path d="M24 12 C14 12, 12 20, 12 28 C12 36, 14 44, 14 48 C18 46, 20 50, 24 48 C28 50, 30 46, 34 48 C34 44, 36 36, 36 28 C36 20, 34 12, 24 12 Z" fill="url(#ghostGrad)" opacity="0.85" stroke="#00C6FF" stroke-width="2"/>
+    <ellipse cx="20" cy="24" rx="2.5" ry="3.5" fill="#1C2333"/>
+    <ellipse cx="28" cy="24" rx="2.5" ry="3.5" fill="#1C2333"/>
+    <circle cx="20" cy="24" r="1" fill="#00C6FF"/>
+    <circle cx="28" cy="24" r="1" fill="#00C6FF"/>
+    <path d="M22 32 Q24 35, 26 32" stroke="#1C2333" stroke-width="1.5" fill="none"/>
+    <circle cx="10" cy="46" r="1.5" fill="#00C6FF" opacity="0.7"/>
+    <circle cx="38" cy="40" r="1" fill="#00C6FF" opacity="0.7"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="samGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FF6B35"/>
+        <stop offset="100%" stop-color="#1A1008"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="16" width="20" height="28" rx="4" fill="url(#samGrad)" stroke="#FF6B35" stroke-width="1.5"/>
+    <path d="M20 16 L24 8 L28 16" fill="none" stroke="#FFD60A" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="16" y="22" width="16" height="8" rx="2" fill="#1A1008" stroke="#FF6B35" stroke-width="1"/>
+    <circle cx="20" cy="25" r="1.5" fill="#FFD60A"/>
+    <circle cx="28" cy="25" r="1.5" fill="#FFD60A"/>
+    <line x1="12" y1="26" x2="12" y2="38" stroke="#FF6B35" stroke-width="3" stroke-linecap="round"/>
+    <line x1="36" y1="26" x2="36" y2="38" stroke="#FF6B35" stroke-width="3" stroke-linecap="round"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#1A1008" stroke="#FF6B35" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#1A1008" stroke="#FF6B35" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="vikGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFD700"/>
+        <stop offset="100%" stop-color="#4A3B00"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="#333" stroke="#FFD700" stroke-width="1.5"/>
+    <path d="M14 18 Q24 10, 34 18 Z" fill="url(#vikGrad)" stroke="#FFF" stroke-width="1"/>
+    <line x1="24" y1="12" x2="24" y2="18" stroke="#FFF" stroke-width="1.5"/>
+    <path d="M14 16 Q8 10, 10 4 Q13 8, 15 16 Z" fill="#FFF"/>
+    <path d="M34 16 Q40 10, 38 4 Q35 8, 33 16 Z" fill="#FFF"/>
+    <path d="M16 26 L24 38 L32 26 Z" fill="#FF8C00"/>
+    <circle cx="20" cy="23" r="1.5" fill="#FFF"/>
+    <circle cx="28" cy="23" r="1.5" fill="#FFF"/>
+    <circle cx="38" cy="34" r="7" fill="#FFD700" stroke="#333" stroke-width="1.5"/>
+    <circle cx="38" cy="34" r="1.5" fill="#FFF"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#333" stroke="#FFD700" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#333" stroke="#FFD700" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="astroGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#FFFFFF"/>
+        <stop offset="100%" stop-color="#A0B0D0"/>
+      </linearGradient>
+      <linearGradient id="visorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#00C6FF"/>
+        <stop offset="100%" stop-color="#FFD60A"/>
+      </linearGradient>
+    </defs>
+    <rect x="12" y="24" width="24" height="20" rx="6" fill="url(#astroGrad)" stroke="#A0B0D0" stroke-width="1.5"/>
+    <rect x="10" y="26" width="4" height="14" rx="1" fill="#FF3B30"/>
+    <circle cx="24" cy="16" r="10" fill="#FFF" stroke="#A0B0D0" stroke-width="1.5"/>
+    <ellipse cx="24" cy="16" rx="8" ry="6" fill="url(#visorGrad)"/>
+    <circle cx="21" cy="14" r="1.5" fill="#FFF" opacity="0.8"/>
+    <rect x="18" y="28" width="12" height="6" rx="1" fill="#1A1A3E"/>
+    <circle cx="21" cy="31" r="1" fill="#32D74B"/>
+    <circle cx="24" cy="31" r="1" fill="#FF3B30"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#FFF" stroke="#A0B0D0" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#FFF" stroke="#A0B0D0" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="witchGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#6B00B0"/>
+        <stop offset="100%" stop-color="#2A0050"/>
+      </linearGradient>
+    </defs>
+    <path d="M24 16 L14 30 L14 46 L34 46 L34 30 Z" fill="url(#witchGrad)" stroke="#BF5FFF" stroke-width="1.5"/>
+    <path d="M24 2 Q18 10, 10 16 L38 16 Q30 10, 24 2 Z" fill="#1C1A27" stroke="#BF5FFF" stroke-width="1.5"/>
+    <ellipse cx="24" cy="16" rx="15" ry="3" fill="#1C1A27" stroke="#BF5FFF" stroke-width="1.5"/>
+    <circle cx="24" cy="22" r="6" fill="#FFDBB5"/>
+    <circle cx="22" cy="21" r="1" fill="#1C1A27"/>
+    <circle cx="26" cy="21" r="1" fill="#1C1A27"/>
+    <path d="M22 25 Q24 27, 26 25" stroke="#1C1A27" stroke-width="1" fill="none"/>
+    <rect x="6" y="28" width="6" height="10" rx="2" fill="#BF5FFF" stroke="#FFF" stroke-width="1"/>
+    <circle cx="9" cy="26" r="2" fill="#FFF"/>
+    <rect x="17" y="46" width="5" height="14" rx="2" fill="#2A0050"/>
+    <rect x="26" y="46" width="5" height="14" rx="2" fill="#2A0050"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="archGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1A4A1A"/>
+        <stop offset="100%" stop-color="#0A2A0A"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="url(#archGrad)" stroke="#32D74B" stroke-width="1.5"/>
+    <path d="M24 12 C16 12, 15 18, 15 22 C15 28, 33 28, 33 22 C33 18, 32 12, 24 12 Z" fill="#1A4A1A" stroke="#32D74B" stroke-width="1"/>
+    <circle cx="24" cy="21" r="6" fill="#E8C49A"/>
+    <rect x="18" y="20" width="12" height="4" rx="1.5" fill="#1A4A1A"/>
+    <circle cx="21" cy="22" r="1" fill="#32D74B"/>
+    <circle cx="27" cy="22" r="1" fill="#32D74B"/>
+    <path d="M40 8 Q46 22, 40 36" fill="none" stroke="#FF9F0A" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="40" y1="8" x2="40" y2="36" stroke="#FFF" stroke-width="1" opacity="0.6"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#0A2A0A" stroke="#32D74B" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#0A2A0A" stroke="#32D74B" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="alcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FF9F0A"/>
+        <stop offset="100%" stop-color="#5C3A00"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="url(#alcGrad)" stroke="#FF9F0A" stroke-width="1.5"/>
+    <path d="M24 12 C16 12, 15 18, 15 22 C15 28, 33 28, 33 22 C33 18, 32 12, 24 12 Z" fill="#5C3A00" stroke="#FF9F0A" stroke-width="1"/>
+    <circle cx="24" cy="21" r="6" fill="#111"/>
+    <circle cx="21" cy="20" r="2.5" fill="none" stroke="#FF9F0A" stroke-width="1.5"/>
+    <circle cx="27" cy="20" r="2.5" fill="none" stroke="#FF9F0A" stroke-width="1.5"/>
+    <path d="M23 23 L25 23 L24 26 Z" fill="#FF9F0A"/>
+    <polygon points="6,34 12,34 9,28" fill="#32D74B" stroke="#FFF" stroke-width="1"/>
+    <circle cx="9" cy="35" r="3.5" fill="#32D74B" opacity="0.9"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#5C3A00" stroke="#FF9F0A" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#5C3A00" stroke="#FF9F0A" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="palGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#FFD60A"/>
+        <stop offset="100%" stop-color="#8B6500"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="url(#palGrad)" stroke="#FFF" stroke-width="2"/>
+    <path d="M21 26 L27 26 L24 32 Z" fill="#FFF"/>
+    <circle cx="24" cy="13" r="10" fill="none" stroke="#FFD60A" stroke-width="2.5" opacity="0.75"/>
+    <path d="M14 18 Q24 10, 34 18 Z" fill="#FFF" stroke="#FFD60A" stroke-width="1.5"/>
+    <path d="M22 18 L26 18 L26 25 L18 25 L18 27 L30 27 L30 25 L26 25 Z" fill="#FFD60A"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#8B6500" stroke="#FFD60A" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#8B6500" stroke="#FFD60A" stroke-width="1"/>
+  </svg>`,
+  `<svg width="48" height="64" viewBox="0 0 48 64" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="rogGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1F1F2E"/>
+        <stop offset="100%" stop-color="#0A0A0F"/>
+      </linearGradient>
+    </defs>
+    <rect x="14" y="18" width="20" height="26" rx="4" fill="url(#rogGrad)" stroke="#888899" stroke-width="1.5"/>
+    <path d="M24 12 C16 12, 14 18, 14 22 L14 26 C14 26, 17 28, 24 28 C31 28, 34 26, 34 26 L34 22 C34 18, 32 12, 24 12 Z" fill="#1F1F2E" stroke="#888899" stroke-width="1"/>
+    <circle cx="20" cy="22" r="1.5" fill="#BF5FFF"/>
+    <circle cx="28" cy="22" r="1.5" fill="#BF5FFF"/>
+    <line x1="10" y1="28" x2="8" y2="40" stroke="#BF5FFF" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="38" y1="28" x2="40" y2="40" stroke="#BF5FFF" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="16" y="44" width="6" height="16" rx="2" fill="#0A0A0F" stroke="#888899" stroke-width="1"/>
+    <rect x="26" y="44" width="6" height="16" rx="2" fill="#0A0A0F" stroke="#888899" stroke-width="1"/>
+  </svg>`,
 ];
 
-/** Renders the actual warrior SVG in a tiny WebView — same as what appears on the map */
+/** Renders the actual warrior SVG natively using react-native-svg SvgXml */
 function AvatarPreview({ svgString, size = 44 }: { svgString: string; size?: number }) {
-  const html = `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>*{margin:0;padding:0;background:transparent}body{display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;overflow:hidden}</style></head><body>${svgString}</body></html>`;
+  const scaledXml = svgString
+    .replace(/width="\\d+"/, `width="\${size}"`)
+    .replace(/height="\\d+"/, `height="\${Math.round((size * 64) / 48)}"`);
   return (
-    <WebView
-      source={{ html }}
-      style={{ width: size, height: size, backgroundColor: 'transparent' }}
-      scrollEnabled={false}
-      pointerEvents="none"
-      originWhitelist={['*']}
-      javaScriptEnabled={false}
-      androidLayerType="hardware"
-    />
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+      <SvgXml xml={scaledXml} width={size} height={Math.round((size * 64) / 48)} />
+    </View>
   );
 }
 
 function ProfileTab({ settings, update }: { settings: Settings; update: (p: Partial<Settings>) => void }) {
   const { T } = useTheme();
+  const { status } = usePremium();
+  const userTier = status.tier || 'free';
+  const navigation = useNavigation<any>();
 
   const [isRunning, setIsRunning] = React.useState(() => {
     const { getRunStore } = require('../store/useRunStore');
@@ -351,10 +762,29 @@ function ProfileTab({ settings, update }: { settings: Settings; update: (p: Part
         {WARRIOR_NAMES.map((name, i) => {
           const isActive = currentAvatar === i;
           const col = WARRIOR_COLORS[i];
+          const reqTier = getRequiredTierForAvatar(i);
+          const isLocked = isTierLocked(reqTier, userTier);
+          const meta = reqTier ? TIER_META[reqTier] : null;
+
           return (
             <TouchableOpacity
               key={i}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); update({ avatarIndex: i } as any); }}
+              onPress={() => {
+                if (isLocked && reqTier) {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  Alert.alert(
+                    'Unlock Required',
+                    `The ${name} avatar is exclusive to RunQuest ${reqTier.toUpperCase()} members. Upgrade now?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'View Plans', onPress: () => goToPremium(navigation) }
+                    ]
+                  );
+                  return;
+                }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                update({ avatarIndex: i } as any);
+              }}
               activeOpacity={0.75}
               style={{
                 width: '22%',
@@ -365,6 +795,7 @@ function ProfileTab({ settings, update }: { settings: Settings; update: (p: Part
                 alignItems: 'center',
                 paddingVertical: 12,
                 gap: 6,
+                position: 'relative',
               }}
             >
               {/* Actual SVG warrior — same as shown on map */}
@@ -382,19 +813,43 @@ function ProfileTab({ settings, update }: { settings: Settings; update: (p: Part
               {isActive && (
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FFF' }} />
               )}
+              {isLocked && meta && (
+                <View style={{ position: 'absolute', top: 5, right: 5, width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.85)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: meta.color }}>
+                  <Ionicons name="lock-closed" size={9} color={meta.color} />
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
       </View>
-
+ 
       <SectionLabel title="RUN PATH STYLE" />
       <View style={{ gap: 8, marginBottom: 4 }}>
         {PATH_STYLES.map(ps => {
           const isActive = currentPathStyle === ps.id;
+          const reqTier = getRequiredTierForPathStyle(ps.id);
+          const isLocked = isTierLocked(reqTier, userTier);
+          const meta = reqTier ? TIER_META[reqTier] : null;
+
           return (
             <TouchableOpacity
               key={ps.id}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); update({ pathStyle: ps.id as any } as any); }}
+              onPress={() => {
+                if (isLocked && reqTier) {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  Alert.alert(
+                    'Unlock Required',
+                    `The ${ps.label} path style is exclusive to RunQuest ${reqTier.toUpperCase()} members. Upgrade now?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'View Plans', onPress: () => goToPremium(navigation) }
+                    ]
+                  );
+                  return;
+                }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                update({ pathStyle: ps.id as any } as any);
+              }}
               activeOpacity={0.8}
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -411,12 +866,18 @@ function ProfileTab({ settings, update }: { settings: Settings; update: (p: Part
                 <Text style={{ color: isActive ? '#FFF' : T.white, fontSize: 15, fontWeight: '900' }}>{ps.label}</Text>
                 <Text style={{ color: isActive ? 'rgba(255,255,255,0.7)' : T.text, fontSize: 12, marginTop: 2 }}>{ps.desc}</Text>
               </View>
-              {isActive && <Ionicons name="checkmark-circle" size={22} color="#FFF" />}
+              {isActive && !isLocked && <Ionicons name="checkmark-circle" size={22} color="#FFF" />}
+              {isLocked && meta && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: meta.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: meta.color + '50' }}>
+                  <Ionicons name="lock-closed" size={11} color={meta.color} />
+                  <Text style={{ color: meta.color, fontSize: 10, fontWeight: '900' }}>{meta.label}</Text>
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
       </View>
-
+ 
       <SectionLabel title="PATH COLOR" />
       {/* Team color note */}
       <View style={{ backgroundColor: T.card, borderRadius: 12, padding: 10, marginBottom: 10, borderWidth: 1, borderColor: T.border, flexDirection: 'row', gap: 8, alignItems: 'flex-start' }}>
@@ -428,10 +889,29 @@ function ProfileTab({ settings, update }: { settings: Settings; update: (p: Part
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 4 }}>
         {PATH_COLORS.map(pc => {
           const isActive = currentPathColor === pc.id;
+          const reqTier = getRequiredTierForPathColor(pc.id);
+          const isLocked = isTierLocked(reqTier, userTier);
+          const meta = reqTier ? TIER_META[reqTier] : null;
+
           return (
             <TouchableOpacity
               key={pc.id}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); update({ pathColor: pc.id as any } as any); }}
+              onPress={() => {
+                if (isLocked && reqTier) {
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                  Alert.alert(
+                    'Unlock Required',
+                    `The ${pc.label} trail color is exclusive to RunQuest ${reqTier.toUpperCase()} members. Upgrade now?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'View Plans', onPress: () => goToPremium(navigation) }
+                    ]
+                  );
+                  return;
+                }
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                update({ pathColor: pc.id as any } as any);
+              }}
               activeOpacity={0.8}
               style={{
                 flexDirection: 'row', alignItems: 'center', gap: 10,
@@ -440,11 +920,17 @@ function ProfileTab({ settings, update }: { settings: Settings; update: (p: Part
                 backgroundColor: isActive ? pc.hex + 'CC' : T.card,
                 paddingHorizontal: 14, paddingVertical: 12,
                 width: '47%',
+                position: 'relative',
               }}
             >
               <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: pc.hex, borderWidth: 2, borderColor: isActive ? '#FFF' : 'transparent' }} />
               <Text style={{ color: isActive ? (pc.id === 'white' ? '#000' : '#FFF') : T.white, fontSize: 13, fontWeight: '900' }}>{pc.label}</Text>
-              {isActive && <Ionicons name="checkmark-circle" size={16} color={pc.id === 'white' ? '#000' : '#FFF'} style={{ marginLeft: 'auto' }} />}
+              {isActive && !isLocked && <Ionicons name="checkmark-circle" size={16} color={pc.id === 'white' ? '#000' : '#FFF'} style={{ marginLeft: 'auto' }} />}
+              {isLocked && meta && (
+                <View style={{ position: 'absolute', top: 5, right: 5, width: 14, height: 14, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.65)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="lock-closed" size={9} color={meta.color} />
+                </View>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -475,38 +961,109 @@ function GeneralTab({ settings, update }: { settings: Settings; update: (p: Part
 
       <SectionLabel title="NAVIGATION BAR STYLE" />
       <View style={{ gap: 8, marginBottom: 4 }}>
-        {NAVBAR_STYLES.map(ns => {
-          const isActive = ((settings as any).navbarStyle || 'pill') === ns.id;
-          return (
-            <TouchableOpacity
-              key={ns.id}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); update({ navbarStyle: ns.id } as any); }}
-              activeOpacity={0.8}
-              style={[styles.navbarOption, {
-                backgroundColor: isActive ? ns.color + '15' : T.card,
-                borderColor: isActive ? ns.color : T.border,
-                borderWidth: isActive ? 2 : 1,
-              }]}
-            >
-              <View style={[styles.navbarOptionIcon, { backgroundColor: ns.color + '20' }]}>
-                <Ionicons name={ns.icon as any} size={20} color={ns.color} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: isActive ? ns.color : T.white, fontSize: 15, fontWeight: '800' }}>
-                  {ns.label}
-                  {ns.id === 'pill' ? <Text style={{ fontSize: 10, fontWeight: '600', color: T.text }}> (Default)</Text> : null}
-                </Text>
-                <Text style={{ color: T.text, fontSize: 12, marginTop: 2 }}>{ns.desc}</Text>
-              </View>
-              {isActive && (
-                <View style={[styles.navbarCheckmark, { backgroundColor: ns.color }]}>
-                  <Ionicons name="checkmark" size={12} color="#FFF" />
+        {(() => {
+          const { status } = usePremium();
+          const userTier = status.tier || 'free';
+          const navigation = useNavigation<any>();
+
+          return NAVBAR_STYLES.map(ns => {
+            const isActive = ((settings as any).navbarStyle || 'pill') === ns.id;
+            const reqTier = getRequiredTierForNavbarStyle(ns.id);
+            const isLocked = isTierLocked(reqTier, userTier);
+            const meta = reqTier ? TIER_META[reqTier] : null;
+
+            return (
+              <TouchableOpacity
+                key={ns.id}
+                onPress={() => {
+                  if (isLocked && reqTier) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    Alert.alert(
+                      'Unlock Required',
+                      `The ${ns.label} navigation bar style is exclusive to RunQuest ${reqTier.toUpperCase()} members. Upgrade now?`,
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'View Plans', onPress: () => goToPremium(navigation) }
+                      ]
+                    );
+                    return;
+                  }
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  update({ navbarStyle: ns.id } as any);
+                }}
+                activeOpacity={0.8}
+                style={[styles.navbarOption, {
+                  backgroundColor: isActive ? ns.color + '15' : T.card,
+                  borderColor: isActive ? ns.color : T.border,
+                  borderWidth: isActive ? 2 : 1,
+                }]}
+              >
+                <View style={[styles.navbarOptionIcon, { backgroundColor: ns.color + '20' }]}>
+                  <Ionicons name={ns.icon as any} size={20} color={ns.color} />
                 </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: isActive ? ns.color : T.white, fontSize: 15, fontWeight: '800' }}>
+                    {ns.label}
+                    {ns.id === 'pill' ? <Text style={{ fontSize: 10, fontWeight: '600', color: T.text }}> (Default)</Text> : null}
+                  </Text>
+                  <Text style={{ color: T.text, fontSize: 12, marginTop: 2 }}>{ns.desc}</Text>
+                </View>
+                {isActive && !isLocked && (
+                  <View style={[styles.navbarCheckmark, { backgroundColor: ns.color }]}>
+                    <Ionicons name="checkmark" size={12} color="#FFF" />
+                  </View>
+                )}
+                {isLocked && meta && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: meta.bg, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: meta.color + '50' }}>
+                    <Ionicons name="lock-closed" size={11} color={meta.color} />
+                    <Text style={{ color: meta.color, fontSize: 10, fontWeight: '900' }}>{meta.label}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          });
+        })()}
       </View>
+
+      {/* Dev Premium Override Section */}
+      {(() => {
+        const { status } = usePremium();
+        return process.env.EXPO_PUBLIC_DEV_UNLOCK_PREMIUM === 'true' ? (
+          <>
+            <SectionLabel title="DEVELOPER OVERRIDES" />
+            <Card>
+              <View style={{ padding: 14, gap: 8 }}>
+                <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 1 }}>SIMULATED SUBSCRIPTION TIER</Text>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {(['free', 'basic', 'pro', 'elite'] as const).map(tier => {
+                    const isActive = (status.tier || 'free') === tier;
+                    const tierColor = tier === 'free' ? T.text : tier === 'basic' ? '#00C6FF' : tier === 'pro' ? '#BF5FFF' : '#FFD60A';
+                    return (
+                      <TouchableOpacity
+                        key={tier}
+                        onPress={() => {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          setDeveloperOverrideTier(tier);
+                        }}
+                        style={{
+                          flex: 1, borderRadius: 12, borderWidth: 1.5, paddingVertical: 10,
+                          alignItems: 'center',
+                          backgroundColor: isActive ? tierColor + '20' : T.card,
+                          borderColor: isActive ? tierColor : T.border,
+                        }}
+                      >
+                        <Text style={{ fontSize: 10, fontWeight: '900', color: isActive ? tierColor : T.text }}>
+                          {tier.toUpperCase()}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            </Card>
+          </>
+        ) : null;
+      })()}
 
       <SectionLabel title="APP INFO" />
       <Card>
@@ -596,7 +1153,35 @@ export default function SettingsScreen() {
     }
   }, [isFocused]);
 
+  const { isPremium } = usePremium();
+  const navigation = useNavigation<any>();
+
   const update = async (patch: Partial<Settings>) => {
+    // Premium validation gate
+    const isSelectingPremium =
+      (patch.avatarIndex !== undefined && patch.avatarIndex >= 4) ||
+      (patch.pathStyle === 'glow') ||
+      (patch.pathColor !== undefined && patch.pathColor !== 'green') ||
+      (patch.navbarStyle !== undefined && patch.navbarStyle !== 'pill');
+
+    if (isSelectingPremium && !isPremium) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Alert.alert(
+        '✦ Premium Feature ✦',
+        'Upgrade to RunQuest Premium to unlock this avatar, path style, neon color, or navigation bar style!',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unlock Premium',
+            onPress: () => {
+              goToPremium(navigation);
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     Haptics.selectionAsync();
     const next = await updateSettings(patch as any);
     setSettings(next);
@@ -720,7 +1305,7 @@ export default function SettingsScreen() {
         {activeTab === 'run'     && <RunTab     settings={settings} update={update} onShowMusicWarning={() => setShowMusicWarning(true)} />}
         {activeTab === 'general' && <GeneralTab settings={settings} update={update} />}
         {activeTab === 'profile' && <ProfileTab settings={settings} update={update} />}
-        {activeTab === 'account' && <AccountTab onLogout={() => setShowLogoutDialog(true)} onClearHistory={() => setShowClearHistoryDialog(true)} />}
+        {activeTab === 'account' && <AccountTab onLogout={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowLogoutDialog(true); }} onClearHistory={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); setShowClearHistoryDialog(true); }} />}
       </Animated.View>
     </View>
   );

@@ -12,6 +12,8 @@ import ActivityFeedScreen from '../screens/ActivityFeedScreen';
 import RunHistoryScreen from '../screens/RunHistoryScreen';
 import CreatorScreen from '../screens/CreatorScreen';
 import BugReportScreen from '../screens/BugReportScreen';
+import QuestsShopScreen from '../screens/QuestsShopScreen';
+import PremiumScreen from '../screens/PremiumScreen';
 import { withErrorBoundary } from '../components/ErrorBoundary';
 
 const SafeProfile      = withErrorBoundary(ProfileScreen,      'Profile');
@@ -25,6 +27,8 @@ const SafeActivityFeed = withErrorBoundary(ActivityFeedScreen, 'ActivityFeed');
 const SafeRunHistory   = withErrorBoundary(RunHistoryScreen,   'RunHistory');
 const SafeCreator      = withErrorBoundary(CreatorScreen,      'Creator');
 const SafeBugReport    = withErrorBoundary(BugReportScreen,    'BugReport');
+const SafeQuestsShop   = withErrorBoundary(QuestsShopScreen,   'QuestsShop');
+const SafePremium      = withErrorBoundary(PremiumScreen,      'Premium');
 
 export type ProfileStackParamList = {
   ProfileMain: undefined;
@@ -38,6 +42,8 @@ export type ProfileStackParamList = {
   RunHistory: undefined;
   Creator: undefined;
   BugReport: undefined;
+  QuestsShop: undefined;
+  Premium: undefined;
 };
 
 const Stack = createStackNavigator<ProfileStackParamList>();
@@ -66,6 +72,8 @@ export function ProfileStackNavigator() {
       <Stack.Screen name="RunHistory"   component={SafeRunHistory} />
       <Stack.Screen name="Creator"      component={SafeCreator} />
       <Stack.Screen name="BugReport"    component={SafeBugReport} />
+      <Stack.Screen name="QuestsShop"   component={SafeQuestsShop} />
+      <Stack.Screen name="Premium"      component={SafePremium} />
     </Stack.Navigator>
   );
 }

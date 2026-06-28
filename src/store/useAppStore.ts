@@ -52,6 +52,9 @@ const FALLBACK_SETTINGS: Settings = {
   vibrateOnAction: true,
   uiTheme: 'midnight',
   showRunBotFab: true,
+  pacerEnabled: false,
+  pacerPaceMinPerKm: 5.5,
+  voiceCoachEnabled: true,
 };
 
 export const useAppStore = create<AppState>((set) => ({

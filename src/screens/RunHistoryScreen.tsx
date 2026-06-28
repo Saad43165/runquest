@@ -504,6 +504,178 @@ function RunRow({ run, index, isMetric, displayName, onDelete, onReplay }: {
   );
 }
 
+// ─── Weekly Activity Bar Chart ────────────────────────────────────────────────
+function WeeklyBarChart({ history, isMetric }: { history: RunRecord[]; isMetric: boolean }) {
+  const { T } = useTheme();
+  const days = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return d;
+  }).reverse();
+
+  const distMult = isMetric ? 1000 : 1609.34;
+
+  const data = days.map(day => {
+    const dayStr = day.toDateString();
+    const dayRuns = history.filter(r => new Date(r.createdAt).toDateString() === dayStr);
+    const distance = dayRuns.reduce((sum, r) => sum + r.distanceMeters, 0) / distMult;
+    return {
+      label: day.toLocaleDateString(undefined, { weekday: 'narrow' }),
+      distance,
+      fullDate: day.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    };
+  });
+
+  const maxVal = Math.max(...data.map(d => d.distance), 1);
+
+  return (
+    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
+      <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8, marginBottom: 12 }}>WEEKLY ACTIVITY</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 100, paddingTop: 10 }}>
+        {data.map((d, idx) => {
+          const pct = (d.distance / maxVal) * 100;
+          return (
+            <View key={idx} style={{ alignItems: 'center', flex: 1 }}>
+              <Text style={{ color: d.distance > 0 ? T.green : 'transparent', fontSize: 9, fontWeight: '900', marginBottom: 4 }}>
+                {d.distance > 0 ? d.distance.toFixed(1) : ''}
+              </Text>
+              <View style={{ height: 60, width: 12, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 6, justifyContent: 'flex-end', overflow: 'hidden' }}>
+                <View style={{ height: `${pct}%`, width: '100%', backgroundColor: d.distance > 0 ? T.green : 'rgba(255,255,255,0.08)', borderRadius: 6 }} />
+              </View>
+              <Text style={{ color: d.distance > 0 ? T.white : T.text, fontSize: 10, fontWeight: '800', marginTop: 6 }}>{d.label}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Monthly Heatmap Calendar ─────────────────────────────────────────────────
+function HeatmapCalendar({ history }: { history: RunRecord[] }) {
+  const { T } = useTheme();
+  const totalDays = 35;
+  const days = Array.from({ length: totalDays }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (totalDays - 1 - i));
+    return d;
+  });
+
+  const gridData = days.map(day => {
+    const dayStr = day.toDateString();
+    const dayRuns = history.filter(r => new Date(r.createdAt).toDateString() === dayStr);
+    const totalDist = dayRuns.reduce((sum, r) => sum + r.distanceMeters, 0);
+    let level: 0 | 1 | 2 | 3 = 0;
+    if (totalDist > 0) {
+      if (totalDist < 1000) level = 1;
+      else if (totalDist < 5000) level = 2;
+      else level = 3;
+    }
+    return { day, level, totalDist };
+  });
+
+  const levelColors = {
+    0: 'rgba(255,255,255,0.03)',
+    1: T.green + '30',
+    2: T.green + '85',
+    3: T.green,
+  };
+
+  return (
+    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
+      <div style={{ display: 'none' }} />
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8 }}>MONTHLY HEATMAP</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Text style={{ color: T.text, fontSize: 8, fontWeight: '700' }}>LESS</Text>
+          {[0, 1, 2, 3].map(lvl => (
+            <View key={lvl} style={{ width: 8, height: 8, borderRadius: 2, backgroundColor: levelColors[lvl as 0|1|2|3] }} />
+          ))}
+          <Text style={{ color: T.text, fontSize: 8, fontWeight: '700' }}>MORE</Text>
+        </View>
+      </View>
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
+        {gridData.map((d, idx) => (
+          <View
+            key={idx}
+            style={{
+              width: 22, height: 22, borderRadius: 5,
+              backgroundColor: levelColors[d.level],
+              borderWidth: d.level > 0 ? 0 : 1,
+              borderColor: 'rgba(255,255,255,0.05)',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <Text style={{ color: d.level > 0 ? '#000' : T.text + '80', fontSize: 8, fontWeight: '900' }}>
+              {d.day.getDate()}
+            </Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ─── Personal Records Highlight Panel ─────────────────────────────────────────
+function PersonalRecordsPanel({ history, isMetric }: { history: RunRecord[]; isMetric: boolean }) {
+  const { T } = useTheme();
+  
+  if (history.length === 0) return null;
+
+  const distMult = isMetric ? 1000 : 1609.34;
+  const unit = isMetric ? 'km' : 'mi';
+
+  const longestDist = Math.max(...history.map(r => r.distanceMeters), 0) / distMult;
+  const largestArea = Math.max(...history.map(r => r.areaSqMeters), 0);
+  const validPaceRuns = history.filter(r => r.distanceMeters >= 500);
+  const bestPaceRaw = validPaceRuns.length > 0
+    ? Math.min(...validPaceRuns.map(r => r.durationSec / (r.distanceMeters / 1000)))
+    : null;
+  const bestPaceStr = bestPaceRaw
+    ? `${Math.floor(bestPaceRaw / 60)}:${String(Math.round(bestPaceRaw % 60)).padStart(2, '0')}/km`
+    : '--';
+
+  const streak = (function() {
+    const dates = new Set(history.map(r => new Date(r.createdAt).toDateString()));
+    let strk = 0;
+    let check = new Date();
+    if (!dates.has(check.toDateString())) {
+      check.setDate(check.getDate() - 1);
+    }
+    while (dates.has(check.toDateString())) {
+      strk++;
+      check.setDate(check.getDate() - 1);
+    }
+    return strk;
+  })();
+
+  return (
+    <View style={{ backgroundColor: T.card, borderRadius: 24, borderWidth: 1, borderColor: T.border, padding: 16, marginBottom: 16 }}>
+      <Text style={{ color: T.white, fontSize: 13, fontWeight: '900', letterSpacing: 0.8, marginBottom: 12 }}>PERSONAL BESTS & STREAK</Text>
+      
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+        {[
+          { label: 'RUN STREAK', value: `${streak} days`, icon: 'flame', color: '#FF9F0A' },
+          { label: 'LONGEST RUN', value: `${longestDist.toFixed(2)} ${unit}`, icon: 'trophy', color: T.gold },
+          { label: 'BEST PACE', value: bestPaceStr, icon: 'speedometer', color: '#00C6FF' },
+          { label: 'LARGEST AREA', value: largestArea > 0 ? `${Math.round(largestArea).toLocaleString()} m²` : '--', icon: 'map', color: T.green },
+        ].map((item, idx) => (
+          <View key={idx} style={{ flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }}>
+            <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: item.color + '20', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={item.icon as any} size={16} color={item.color} />
+            </View>
+            <View>
+              <Text style={{ color: T.white, fontSize: 13, fontWeight: '900' }}>{item.value}</Text>
+              <Text style={{ color: T.text, fontSize: 8, fontWeight: '800', letterSpacing: 0.5, marginTop: 2 }}>{item.label}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function RunHistoryScreen() {
   const { T } = useTheme();
@@ -615,6 +787,11 @@ export default function RunHistoryScreen() {
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={T.text} />
                 </TouchableOpacity>
+
+                {/* Data Visualizations and Streaks */}
+                <PersonalRecordsPanel history={history} isMetric={isMetric} />
+                <WeeklyBarChart history={history} isMetric={isMetric} />
+                <HeatmapCalendar history={history} />
               </>
             )}
 

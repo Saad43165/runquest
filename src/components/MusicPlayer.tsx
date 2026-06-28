@@ -173,7 +173,7 @@ export function MusicPlayer({ visible = true, topOffset = 10 }: Props) {
     }).start();
     // Stop music when player is hidden
     if (!visible && isPlaying) {
-      try { player.pause(); } catch {}
+      try { player?.pause(); } catch {}
     }
   }, [visible]);
 
@@ -194,10 +194,10 @@ export function MusicPlayer({ visible = true, topOffset = 10 }: Props) {
     if (!track) return;
     setBrokenTracks(prev => { const n = new Set(prev); n.delete(currentIndex); return n; });
     try {
-      player.replace({ uri: track.uri });
+      player?.replace({ uri: track.uri });
       // Only auto-play if user has already interacted (not on initial load)
       if (hasUserInteracted.current) {
-        player.play();
+        player?.play();
       }
     } catch (e) {
       console.warn('Player error loading track:', e);
@@ -226,7 +226,7 @@ export function MusicPlayer({ visible = true, topOffset = 10 }: Props) {
     if (tracksRef.current.length === 0) { pickMusic(); return; }
     hasUserInteracted.current = true;
     try {
-      if (status?.playing) { player.pause(); } else { player.play(); }
+      if (status?.playing) { player?.pause(); } else { player?.play(); }
     } catch { }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [status?.playing]);
@@ -242,7 +242,7 @@ export function MusicPlayer({ visible = true, topOffset = 10 }: Props) {
     if (!tracksRef.current.length) return;
     // If more than 3 seconds in, restart; else go to previous
     if (positionSec > 3 && durationSec > 0) {
-      try { player.seekTo(0); } catch { }
+      try { player?.seekTo(0); } catch { }
     } else {
       loadedIndexRef.current = -1;
       setCurrentIndex(i => (i - 1 + tracksRef.current.length) % tracksRef.current.length);
@@ -251,7 +251,7 @@ export function MusicPlayer({ visible = true, topOffset = 10 }: Props) {
   }, [positionSec, durationSec]);
 
   const seekTo = useCallback((sec: number) => {
-    try { player.seekTo(sec); } catch { }
+    try { player?.seekTo(sec); } catch { }
   }, []);
 
   const pickMusic = async () => {
@@ -564,7 +564,7 @@ export function MusicPlayer({ visible = true, topOffset = 10 }: Props) {
                           return n;
                         });
                         if (index === currentIndex) {
-                          try { player.pause(); } catch { }
+                          try { player?.pause(); } catch { }
                           loadedIndexRef.current = -1;
                           setCurrentIndex(newTracks.length > 0 ? 0 : 0);
                         } else if (index < currentIndex) {
