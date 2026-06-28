@@ -447,16 +447,20 @@ export default function ProfileScreen() {
               </LinearGradient>
             </TouchableOpacity>
           ) : (
-            <View style={{ borderRadius: 16, marginTop: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: tierColor + '40', backgroundColor: tierColor + '0d', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity 
+              onPress={() => nav('Premium')}
+              activeOpacity={0.85}
+              style={{ borderRadius: 16, marginTop: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: tierColor + '40', backgroundColor: tierColor + '0d', paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+            >
               <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: tierColor + '20', alignItems: 'center', justifyContent: 'center' }}>
                 <FontAwesome5 name="crown" size={18} color={tierColor} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: tierColor, fontSize: 13, fontWeight: '900' }}>{tierLabel} ✦</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 }}>Thank you for supporting RunQuest!</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 }}>Tap here to manage your subscription</Text>
               </View>
-              <Ionicons name="checkmark-circle" size={18} color={tierColor} />
-            </View>
+              <Ionicons name="settings-outline" size={18} color={tierColor} />
+            </TouchableOpacity>
           )}
         </View>
 

@@ -23,7 +23,7 @@ type PremiumContextValue = {
   isPremium: boolean;
   status: PremiumStatus;
   loading: boolean;
-  purchase: (productId: string) => Promise<{ success: boolean; error?: string }>;
+  purchase: (productId: string, rcpkg?: any) => Promise<{ success: boolean; error?: string }>;
   restore:  () => Promise<{ restored: boolean; error?: string }>;
   refresh:  () => Promise<void>;
   setTier:  (tier: 'free' | 'basic' | 'pro' | 'elite') => void;
@@ -63,8 +63,8 @@ export function PremiumProvider({ children }: { children: React.ReactNode }) {
     return unsub;
   }, []);
 
-  const purchase = useCallback(async (productId: string) => {
-    const result = await purchasePremium(productId);
+  const purchase = useCallback(async (productId: string, rcpkg?: any) => {
+    const result = await purchasePremium(productId, rcpkg);
     if (result.success) {
       setStatus({ ...getPremiumStatus() });
       emitPremiumChange();

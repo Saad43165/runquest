@@ -18,6 +18,7 @@ import { useTheme } from '@/utils/ThemeContext';
 import { usePremium } from '../context/PremiumContext';
 import { getOfferings } from '../services/premiumService';
 import { OrbBackground } from '../components/OrbBackground';
+import { ConfirmDialog } from '../components/ConfirmDialog';
 
 const { width } = Dimensions.get('window');
 
@@ -184,6 +185,8 @@ export default function PremiumScreen() {
     elite: { price: string; productId: string } | null;
   }>({ basic: null, pro: null, elite: null });
 
+  const [customDialog, setCustomDialog] = useState<{ visible: boolean; title: string; message: string; confirmText?: string; cancelText?: string; onConfirm?: () => void; onCancel?: () => void; isDestructive?: boolean; icon?: string } | null>(null);
+
   const headerAnim = useRef(new Animated.Value(0)).current;
   const crownAnim  = useRef(new Animated.Value(0)).current;
   const glowAnim   = useRef(new Animated.Value(0)).current;
@@ -222,56 +225,72 @@ export default function PremiumScreen() {
         setTier('free');
         setLoading(false);
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert(
-          'Subscription Deactivated',
-          'Your premium status has been set back to Free. All limits restored.',
-          [{ text: 'OK' }]
-        );
+        setCustomDialog({
+          visible: true,
+          title: 'Subscription Deactivated',
+          message: 'Your premium status has been set back to Free. All limits restored.',
+          confirmText: 'OK',
+          cancelText: '',
+          icon: 'close-circle',
+          isDestructive: true,
+          onConfirm: () => {},
+          onCancel: () => {},
+        });
       }, 600);
       return;
     }
 
-    const productId = selectedPlan === 'basic'
-      ? (offerings.basic?.productId ?? 'runquest_premium_basic')
-      : selectedPlan === 'pro'
-        ? (offerings.pro?.productId ?? 'runquest_premium_pro')
-        : (offerings.elite?.productId ?? 'runquest_premium_elite');
+    const selectedOffering = selectedPlan === 'basic' ? offerings.basic : selectedPlan === 'pro' ? offerings.pro : offerings.elite;
+    const productId = selectedOffering?.productId ?? `runquest_premium_${selectedPlan}`;
+    const rcpkg = selectedOffering?.rcpkg;
 
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Call standard purchases
-    const result = await purchase(productId);
+    // Call standard purchases with the package
+    const result = await purchase(productId, rcpkg);
     setLoading(false);
 
     if (result.success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert(
-        '🎉 Plan Activated!',
-        `You now have access to ${selectedPlan.toUpperCase()} features.`,
-        [{ text: 'Awesome', onPress: () => navigation.goBack() }]
-      );
+      setCustomDialog({
+        visible: true,
+        title: '🎉 Plan Activated!',
+        message: `You now have access to ${selectedPlan.toUpperCase()} features.`,
+        confirmText: 'Awesome',
+        cancelText: '',
+        icon: 'checkmark-circle',
+        onConfirm: () => navigation.goBack(),
+        onCancel: () => {},
+      });
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert(
-        'Purchase Failed',
-        `${result.error ?? 'Store purchase could not be completed.'}\n\nWould you like to bypass using Developer Sandbox Mode?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Activate Sandbox Bypass',
-            onPress: () => {
-              setTier(selectedPlan);
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert(
-                '🎉 Sandbox Activated!',
-                `Developer bypass active. You now have access to ${selectedPlan.toUpperCase()} features.`,
-                [{ text: 'Awesome', onPress: () => navigation.goBack() }]
-              );
-            }
-          }
-        ]
-      );
+      setCustomDialog({
+        visible: true,
+        title: 'Purchase Failed',
+        message: `${result.error ?? 'Store purchase could not be completed.'}\n\nWould you like to bypass using Developer Sandbox Mode?`,
+        confirmText: 'Activate Sandbox',
+        cancelText: 'Cancel',
+        icon: 'warning',
+        isDestructive: false,
+        onConfirm: () => {
+          setTier(selectedPlan);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setTimeout(() => {
+            setCustomDialog({
+              visible: true,
+              title: '🎉 Sandbox Activated!',
+              message: `Developer bypass active. You now have access to ${selectedPlan.toUpperCase()} features.`,
+              confirmText: 'Awesome',
+              cancelText: '',
+              icon: 'checkmark-circle',
+              onConfirm: () => navigation.goBack(),
+              onCancel: () => {},
+            });
+          }, 400);
+        },
+        onCancel: () => {},
+      });
     }
   };
 
@@ -281,10 +300,28 @@ export default function PremiumScreen() {
     setLoading(false);
     if (result.restored) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('✅ Purchases Restored', 'Your premium subscription has been restored!',
-        [{ text: 'Awesome!', onPress: () => navigation.goBack() }]);
+      setCustomDialog({
+        visible: true,
+        title: '✅ Purchases Restored',
+        message: 'Your premium subscription has been restored!',
+        confirmText: 'Awesome!',
+        cancelText: '',
+        icon: 'checkmark-circle',
+        onConfirm: () => navigation.goBack(),
+        onCancel: () => {},
+      });
     } else {
-      Alert.alert('No Purchases Found', result.error ?? 'No active subscription found to restore.');
+      setCustomDialog({
+        visible: true,
+        title: 'No Purchases Found',
+        message: result.error ?? 'No active subscription found to restore.',
+        confirmText: 'OK',
+        cancelText: '',
+        icon: 'alert-circle',
+        isDestructive: true,
+        onConfirm: () => {},
+        onCancel: () => {},
+      });
     }
   };
 
@@ -536,6 +573,28 @@ export default function PremiumScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      {customDialog && (
+        <ConfirmDialog
+          visible={customDialog.visible}
+          title={customDialog.title}
+          message={customDialog.message}
+          confirmText={customDialog.confirmText}
+          cancelText={customDialog.cancelText}
+          destructive={customDialog.isDestructive}
+          icon={customDialog.icon}
+          onConfirm={() => {
+            const cb = customDialog.onConfirm;
+            setCustomDialog(null);
+            cb?.();
+          }}
+          onCancel={() => {
+            const cb = customDialog.onCancel;
+            setCustomDialog(null);
+            cb?.();
+          }}
+        />
+      )}
     </View>
   );
 }

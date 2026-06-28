@@ -183,9 +183,9 @@ export function isPremiumActive(): boolean {
 
 // ─── Fetch latest offerings ───────────────────────────────────────────────────
 export async function getOfferings(): Promise<{
-  basic: { price: string; productId: string } | null;
-  pro:   { price: string; productId: string } | null;
-  elite: { price: string; productId: string } | null;
+  basic: { price: string; productId: string; rcpkg?: any } | null;
+  pro:   { price: string; productId: string; rcpkg?: any } | null;
+  elite: { price: string; productId: string; rcpkg?: any } | null;
 }> {
   const Purchases = await getPurchases();
   if (!Purchases || !RC_KEY || !_rcConfigured) {
@@ -218,13 +218,13 @@ export async function getOfferings(): Promise<{
 
     return {
       basic: basic
-        ? { price: basic.product.priceString, productId: basic.product.productIdentifier }
+        ? { price: basic.product.priceString, productId: basic.product.identifier, rcpkg: basic }
         : { price: '$2.99', productId: PRODUCT_BASIC },
       pro: pro
-        ? { price: pro.product.priceString, productId: pro.product.productIdentifier }
+        ? { price: pro.product.priceString, productId: pro.product.identifier, rcpkg: pro }
         : { price: '$5.99', productId: PRODUCT_PRO },
       elite: elite
-        ? { price: elite.product.priceString, productId: elite.product.productIdentifier }
+        ? { price: elite.product.priceString, productId: elite.product.identifier, rcpkg: elite }
         : { price: '$9.99', productId: PRODUCT_ELITE },
     };
   } catch {
@@ -237,7 +237,7 @@ export async function getOfferings(): Promise<{
 }
 
 // ─── Purchase a product ───────────────────────────────────────────────────────
-export async function purchasePremium(productId: string): Promise<{
+export async function purchasePremium(productId: string, rcpkg?: any): Promise<{
   success: boolean;
   error?: string;
 }> {
@@ -256,9 +256,15 @@ export async function purchasePremium(productId: string): Promise<{
     return { success: true };
   }
   try {
-    const { customerInfo } = await Purchases.purchaseStoreProduct(
-      { productIdentifier: productId } as any
-    );
+    let customerInfo;
+    if (rcpkg) {
+      const res = await Purchases.purchasePackage(rcpkg);
+      customerInfo = res.customerInfo;
+    } else {
+      // Fallback (only works if productId is a valid StoreProduct mock)
+      const res = await Purchases.purchaseStoreProduct({ identifier: productId } as any);
+      customerInfo = res.customerInfo;
+    }
     const entitlement = customerInfo.entitlements.active[ENTITLEMENT_ID];
     const isPremium = !!entitlement;
     _cachedStatus = {

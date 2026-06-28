@@ -1,7 +1,7 @@
 import React from 'react';
 import { Image, View, StyleSheet } from 'react-native';
 
-const APP_ICON = require('../../assets/icon.png');
+const APP_ICON = require('../../assets/app_icon.jpg');
 
 interface Props {
   size?: number;

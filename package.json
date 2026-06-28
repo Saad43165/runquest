@@ -75,6 +75,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@react-native-community/cli": "^20.2.0",
     "@react-native/eslint-config": "^0.75.0",
     "@types/leaflet": "^1.9.21",
     "@typescript-eslint/eslint-plugin": "^7.18.0",

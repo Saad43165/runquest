@@ -47,6 +47,7 @@ import RunBotHelpModal from '@/components/run/RunBotHelpModal';
 import RunMusicControl from '@/components/run/RunMusicControl';
 import { MusicPlayer, Marquee } from '@/components/MusicPlayer';
 import CoachmarksOverlay from '@/components/run/CoachmarksOverlay';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 
 const getPacerOptions = (isMetric: boolean) => [
@@ -130,6 +131,7 @@ export default function RunScreen() {
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [showHub, setShowHub] = useState(false);
   const [showCoachmarks, setShowCoachmarks] = useState(false);
+  const [customDialog, setCustomDialog] = useState<any>(null);
 
   // ── Countdown before run ──────────────────────────────────────────────────
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -805,17 +807,30 @@ export default function RunScreen() {
         }
 
         // Show in-app alert so user sees it immediately (notifications may not show in foreground)
-        Alert.alert(title, message, [{ text: 'Awesome!', style: 'default' }]);
+        setCustomDialog({
+          visible: true,
+          title,
+          message,
+          confirmText: 'Awesome!',
+          cancelText: '',
+          icon: 'trophy',
+          onConfirm: () => {},
+        });
         updateQuestProgress('loop', 1).catch(() => {});
         reset();
       }
     } catch (e: any) {
       console.error('Claim failed:', e.message);
-      Alert.alert(
-        'Claim Failed',
-        e.message || 'Could not claim territory. Please try again.',
-        [{ text: 'OK' }]
-      );
+      setCustomDialog({
+        visible: true,
+        title: 'Claim Failed',
+        message: e.message || 'Could not claim territory. Please try again.',
+        confirmText: 'OK',
+        cancelText: '',
+        icon: 'warning',
+        isDestructive: true,
+        onConfirm: () => {},
+      });
     }
   };
 
@@ -886,11 +901,15 @@ export default function RunScreen() {
       await stopRun();
       setElapsed(0);
       reset();
-      Alert.alert(
-        "Run Too Short",
-        "Your run was under 50m or 15s, so it wasn't saved.",
-        [{ text: "OK" }]
-      );
+      setCustomDialog({
+        visible: true,
+        title: "Run Too Short",
+        message: "Your run was under 50m or 15s, so it wasn't saved.",
+        confirmText: "OK",
+        cancelText: "",
+        icon: "information-circle",
+        onConfirm: () => {},
+      });
       return;
     }
 
@@ -1885,14 +1904,16 @@ export default function RunScreen() {
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                           if (isLocked) {
-                            Alert.alert(
-                              'Unlock Required',
-                              'The Virtual Pacer is exclusive to RunQuest PRO and ELITE members. Upgrade now to race against your target pace!',
-                              [
-                                { text: 'Cancel', style: 'cancel' },
-                                { text: 'View Plans', onPress: () => navigation.navigate('Profile', { screen: 'Premium' }) }
-                              ]
-                            );
+                            setCustomDialog({
+                              visible: true,
+                              title: 'Unlock Required',
+                              message: 'The Virtual Pacer is exclusive to RunQuest PRO and ELITE members. Upgrade now to race against your target pace!',
+                              confirmText: 'View Plans',
+                              cancelText: 'Cancel',
+                              icon: 'lock-closed',
+                              onConfirm: () => navigation.navigate('Profile', { screen: 'Premium' }),
+                              onCancel: () => {},
+                            });
                             return;
                           }
                           import('../config/settings').then(({ updateSettings }) => {
@@ -1935,14 +1956,16 @@ export default function RunScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       const isLocked = userTier !== 'pro' && userTier !== 'elite';
                       if (isLocked) {
-                        Alert.alert(
-                          'Unlock Required',
-                          'The AI Voice Coach is exclusive to RunQuest PRO and ELITE members. Upgrade now to get real-time audio pace alerts!',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            { text: 'View Plans', onPress: () => navigation.navigate('Profile', { screen: 'Premium' }) }
-                          ]
-                        );
+                        setCustomDialog({
+                          visible: true,
+                          title: 'Unlock Required',
+                          message: 'The AI Voice Coach is exclusive to RunQuest PRO and ELITE members. Upgrade now to get real-time audio pace alerts!',
+                          confirmText: 'View Plans',
+                          cancelText: 'Cancel',
+                          icon: 'lock-closed',
+                          onConfirm: () => navigation.navigate('Profile', { screen: 'Premium' }),
+                          onCancel: () => {},
+                        });
                         return;
                       }
                       const curVal = settings?.voiceCoachEnabled !== false;
@@ -2368,6 +2391,28 @@ export default function RunScreen() {
         onClose={() => setShowCoachmarks(false)}
         layouts={coachmarkLayouts}
       />
+
+      {customDialog && (
+        <ConfirmDialog
+          visible={customDialog.visible}
+          title={customDialog.title}
+          message={customDialog.message}
+          confirmText={customDialog.confirmText}
+          cancelText={customDialog.cancelText}
+          destructive={customDialog.isDestructive}
+          icon={customDialog.icon}
+          onConfirm={() => {
+            const cb = customDialog.onConfirm;
+            setCustomDialog(null);
+            cb?.();
+          }}
+          onCancel={() => {
+            const cb = customDialog.onCancel;
+            setCustomDialog(null);
+            cb?.();
+          }}
+        />
+      )}
     </View>
   );
 }

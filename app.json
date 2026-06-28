@@ -4,7 +4,7 @@
     "slug": "runquest",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/app_icon.jpg",
     "backgroundColor": "#0b1026",
     "splash": {
       "image": "./assets/splash.png",

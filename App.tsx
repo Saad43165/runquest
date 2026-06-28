@@ -96,7 +96,7 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
         alignItems: 'center',
       }}>
         <Image
-          source={require('./assets/icon.png')}
+          source={require('./assets/app_icon.jpg')}
           style={{ width: 120, height: 120, borderRadius: 28 }}
           resizeMode="contain"
         />
