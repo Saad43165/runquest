@@ -12,55 +12,14 @@ import { OrbBackground } from '../components/OrbBackground';
 
 const { width } = Dimensions.get('window');
 
-// Use the app icon as the developer photo placeholder
-// Replace with actual photo: require('../../assets/saad.jpg')
+// Developer photo
 const PHOTO = require('../../assets/saad.png');
-
-const SKILLS = [
-  { label: 'React Native', level: 95 },
-  { label: 'Flutter', level: 85 },
-  { label: 'TypeScript', level: 90 },
-  { label: 'Firebase', level: 88 },
-  { label: 'UI/UX Design', level: 82 },
-  { label: 'GPS & Maps', level: 80 },
-];
 
 const APP_STATS = [
   { label: 'Screens', value: '15+', icon: 'layers-outline' },
   { label: 'Features', value: '40+', icon: 'flash-outline' },
   { label: 'Dev Time', value: '3 mo', icon: 'time-outline' },
 ];
-
-function SkillBar({ skill, index }: { skill: typeof SKILLS[0]; index: number }) {
-  const { T } = useTheme();
-  const barAnim = useRef(new Animated.Value(0)).current;
-  const mountAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.sequence([
-      Animated.delay(index * 70),
-      Animated.parallel([
-        Animated.spring(mountAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 9 }),
-        Animated.timing(barAnim, { toValue: skill.level / 100, duration: 700, useNativeDriver: false }),
-      ]),
-    ]).start();
-  }, []);
-
-  return (
-    <Animated.View style={{ opacity: mountAnim, marginBottom: 12 }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-        <Text style={{ color: T.white, fontSize: 13, fontWeight: '600' }}>{skill.label}</Text>
-        <Text style={{ color: T.text, fontSize: 12 }}>{skill.level}%</Text>
-      </View>
-      <View style={{ height: 4, backgroundColor: T.border, borderRadius: 2, overflow: 'hidden' }}>
-        <Animated.View style={{
-          height: '100%', borderRadius: 2, backgroundColor: T.green,
-          width: barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] }),
-        }} />
-      </View>
-    </Animated.View>
-  );
-}
 
 export default function CreatorScreen() {
   const { T } = useTheme();
@@ -121,9 +80,6 @@ export default function CreatorScreen() {
             <Text style={{ color: T.green, fontSize: 13, fontWeight: '700', textAlign: 'center', marginTop: 4 }}>
               Mobile App Developer
             </Text>
-            <Text style={{ color: T.text, fontSize: 12, textAlign: 'center', marginTop: 3 }}>
-              Chakwal, Punjab, Pakistan
-            </Text>
 
             {/* Bio */}
             <View style={[styles.bio, { borderColor: T.border }]}>
@@ -145,6 +101,21 @@ export default function CreatorScreen() {
                 <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ color: T.white, fontSize: 13, fontWeight: '700' }}>GitHub</Text>
                   <Text style={{ color: T.text, fontSize: 11 }} numberOfLines={1}>github.com/saad43165</Text>
+                </View>
+                <Ionicons name="open-outline" size={16} color={T.text} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => openLink('https://www.linkedin.com/in/saad-i-786123406?utm_source=share_via&utm_content=profile&utm_medium=member_android')}
+                activeOpacity={0.85}
+                style={[styles.contactBtn, { backgroundColor: T.card, borderColor: T.border }]}
+              >
+                <View style={[styles.contactBtnIcon, { backgroundColor: '#0077b5' + '30' }]}>
+                  <Ionicons name="logo-linkedin" size={18} color="#0077b5" />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ color: T.white, fontSize: 13, fontWeight: '700' }}>LinkedIn</Text>
+                  <Text style={{ color: T.text, fontSize: 11 }} numberOfLines={1}>Connect with me</Text>
                 </View>
                 <Ionicons name="open-outline" size={16} color={T.text} />
               </TouchableOpacity>
@@ -196,65 +167,9 @@ export default function CreatorScreen() {
           </View>
         </View>
 
-        {/* ── Skills ── */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <Text style={[styles.sectionLabel, { color: T.text }]}>SKILLS</Text>
-          <View style={[styles.card, { backgroundColor: T.card, borderColor: T.border }]}>
-            {SKILLS.map((skill, i) => (
-              <SkillBar key={skill.label} skill={skill} index={i} />
-            ))}
-          </View>
-        </View>
 
-        {/* ── Technologies ── */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <Text style={[styles.sectionLabel, { color: T.text }]}>TECHNOLOGIES</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {['React Native', 'Flutter', 'Expo', 'TypeScript', 'Firebase', 'Firestore',
-              'MapLibre GL', 'Turf.js', 'Claude AI', 'Expo Audio', 'React Navigation', 'AsyncStorage',
-            ].map(tech => (
-              <View key={tech} style={[styles.techChip, { backgroundColor: T.card, borderColor: T.border }]}>
-                <Text style={{ color: T.text, fontSize: 12, fontWeight: '600' }}>{tech}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
 
-        {/* ── Background ── */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <Text style={[styles.sectionLabel, { color: T.text }]}>BACKGROUND</Text>
-          <View style={[styles.card, { backgroundColor: T.card, borderColor: T.border }]}>
-            {[
-              { icon: 'school-outline', title: 'Computer Science', sub: 'Software Engineering background' },
-              { icon: 'phone-portrait-outline', title: 'Primary: Mobile App Development', sub: 'React Native & Flutter since 2022' },
-              { icon: 'globe-outline', title: 'Open Source', sub: 'github.com/saad43165' },
-              { icon: 'construct-outline', title: 'Full-Stack Capable', sub: 'Firebase, Node.js, REST APIs' },
-            ].map((item, i, arr) => (
-              <View key={item.title}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 13 }}>
-                  <View style={{ width: 38, height: 38, borderRadius: 11, backgroundColor: T.border, alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name={item.icon as any} size={17} color={T.text} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: T.white, fontSize: 13, fontWeight: '700' }}>{item.title}</Text>
-                    <Text style={{ color: T.text, fontSize: 11, marginTop: 2 }}>{item.sub}</Text>
-                  </View>
-                </View>
-                {i < arr.length - 1 && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: T.border, marginLeft: 52 }} />}
-              </View>
-            ))}
-          </View>
-        </View>
 
-        {/* ── About RunQuest ── */}
-        <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-          <Text style={[styles.sectionLabel, { color: T.text }]}>ABOUT RUNQUEST</Text>
-          <View style={[styles.card, { backgroundColor: T.card, borderColor: T.border }]}>
-            <Text style={{ color: T.text, fontSize: 13, lineHeight: 21 }}>
-              RunQuest is a real-world GPS territory claiming game. Players run physical routes to claim land on a global map, invade enemy territories, form alliances, and compete on worldwide leaderboards.{'\n\n'}Designed and developed entirely by Saad Ikram — from UI/UX to backend architecture, real-time database, AI assistant, and GPS algorithms.
-            </Text>
-          </View>
-        </View>
 
       </ScrollView>
     </View>

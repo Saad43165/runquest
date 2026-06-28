@@ -51,6 +51,22 @@ const FAQ_CATEGORIES = [
       { q: 'What is RunBot AI?', a: 'Your AI assistant. Ask anything about the app, change settings, or navigate to any screen. Powered by Claude AI (Anthropic).' },
     ],
   },
+  {
+    id: 'quests', icon: 'sparkles-outline', label: 'Quests & Items', color: '#FF9F0A',
+    items: [
+      { q: 'How do I earn Gold & Gems?', a: 'You earn Gold by completing Daily, Weekly, and Monthly Quests. Gems are rare rewards found in Loot Drops while running.' },
+      { q: 'What are Loot Drops?', a: 'While running, you may see glowing orbs on the map. Run near them to automatically collect them! They contain Gold, Gems, and XP.' },
+      { q: 'What is the Shop Hub?', a: 'Use your Gold and Gems to buy exclusive Path Colors, Avatar Halos, and temporary Boosters. Access it from your Profile.' },
+    ],
+  },
+  {
+    id: 'premium', icon: 'crown-outline', label: 'Premium', color: '#FFD60A',
+    items: [
+      { q: 'What is RunQuest Premium?', a: 'Premium is an optional subscription that unlocks the Virtual Pacer, AI Voice Coach, exclusive Neon map themes, and extends territory expiry time.' },
+      { q: 'How do I manage my subscription?', a: 'Go to Profile, tap the Premium banner to view the Premium Dashboard. From there, you can view, change, or downgrade your plan securely.' },
+      { q: 'If I reinstall, do I lose Premium?', a: 'No! Just log into your account, go to the Premium Screen, and tap "Restore Purchases" at the bottom to re-link your subscription.' },
+    ],
+  },
 ];
 
 // ─── FAQ Item ─────────────────────────────────────────────────────────────────
@@ -275,14 +291,16 @@ export default function HelpSupportScreen() {
             <View style={[styles.aboutCard, { backgroundColor: T.card, borderColor: T.border }]}>
               <Text style={{ color: T.text, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 12 }}>FEATURES</Text>
               {[
-                { icon: 'map', text: 'GPS territory claiming & invasion', color: '#00C6FF' },
-                { icon: 'podium', text: 'Global real-time leaderboard', color: '#FFD60A' },
-                { icon: 'people', text: 'Teams, alliances & friends', color: '#BF5FFF' },
-                { icon: 'trophy', text: '7-tier achievement system', color: '#CD7F32' },
-                { icon: 'musical-notes', text: 'Built-in music player', color: '#FF2D55' },
-                { icon: 'fitness', text: 'Fitness tracking & route replay', color: '#FF453A' },
-                { icon: 'hardware-chip', text: 'RunBot AI assistant', color: '#32D74B' },
-                { icon: 'flash', text: 'Live activity feed', color: '#FF6B35' },
+                { icon: 'map', text: 'Real-world GPS territory claiming & invasion', color: '#00C6FF' },
+                { icon: 'podium', text: 'Global & Friends real-time leaderboards', color: '#FFD60A' },
+                { icon: 'sparkles', text: 'Daily Quests, Loot Drops & Shop Hub', color: '#FF9F0A' },
+                { icon: 'people', text: 'Create Teams & forge Alliances', color: '#BF5FFF' },
+                { icon: 'hardware-chip', text: 'RunBot AI, Virtual Pacer & Voice Coach', color: '#32D74B' },
+                { icon: 'color-palette', text: 'Custom avatars, path styles & map themes', color: '#FF2D55' },
+                { icon: 'trophy', text: '7-tier dynamic achievement system', color: '#CD7F32' },
+                { icon: 'musical-notes', text: 'Built-in local music player', color: '#FF453A' },
+                { icon: 'fitness', text: 'Advanced fitness stats & run history', color: '#0A84FF' },
+                { icon: 'flash', text: 'Live global activity feed', color: '#FF6B35' },
               ].map((f, i) => (
                 <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}>
                   <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: f.color + '18', alignItems: 'center', justifyContent: 'center' }}>
