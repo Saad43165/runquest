@@ -41,7 +41,6 @@ import LastRunBar from '@/components/run/LastRunBar';
 import AchievementModal from '@/components/run/AchievementModal';
 import RunSummaryModal from '@/components/run/RunSummaryModal';
 import WeatherModal from '@/components/run/WeatherModal';
-import BugReportModal from '@/components/run/BugReportModal';
 import RunBotFAB from '@/components/run/RunBotFAB';
 import RunBotHelpModal from '@/components/run/RunBotHelpModal';
 import RunMusicControl from '@/components/run/RunMusicControl';
@@ -123,7 +122,6 @@ export default function RunScreen() {
   const [showSummary, setShowSummary] = useState(false);
   const [showWeatherModal, setShowWeatherModal] = useState(false);
   const [showBotHelp, setShowBotHelp] = useState(false);
-  const [showBugReport, setShowBugReport] = useState(false);
   const [showShortRunDialog, setShowShortRunDialog] = useState(false);
   const [shortRunMessage, setShortRunMessage] = useState('');
   const [showPauseWarning, setShowPauseWarning] = useState(false);
@@ -1162,11 +1160,6 @@ export default function RunScreen() {
 
       <WeatherModal visible={showWeatherModal} onClose={() => setShowWeatherModal(false)} weather={weather} isLight={isLight} />
 
-      {/* ════ BUG REPORT MODAL — inline, no navigation stack ════ */}
-      <Modal visible={showBugReport} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowBugReport(false)}>
-        <BugReportModal onClose={() => setShowBugReport(false)} />
-      </Modal>
-
       {/* ════ TERRITORY NAMING MODAL (Feature 1) ════ */}
       <Modal visible={showNameModal} transparent animationType="fade" onRequestClose={() => setShowNameModal(false)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 24 }}>
@@ -2005,7 +1998,7 @@ export default function RunScreen() {
 
               {/* Bug report icon — always in dashboard */}
               <TouchableOpacity
-                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowBugReport(true); }}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); navigation.navigate('GlobalBugReport' as any); }}
                 style={[styles.secondaryBtn, { backgroundColor: isLight ? '#FFF0F0' : 'rgba(255,69,58,0.12)', borderColor: isLight ? '#FFCDD2' : 'rgba(255,69,58,0.3)', width: 48 }]}
               >
                 <Ionicons name="bug-outline" size={20} color="#FF453A" />

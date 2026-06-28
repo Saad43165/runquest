@@ -3,6 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, ActivityIndicator, StatusBar, Text, TouchableOpacity, Alert, Animated, Image, Dimensions, Platform } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -18,13 +19,13 @@ import { ThemeProvider, ThemeName, useTheme } from '@/utils/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { TerritoriesProvider } from './src/context/TerritoriesContext';
 import { PremiumProvider, usePremium } from './src/context/PremiumContext';
-import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ErrorBoundary, withErrorBoundary } from './src/components/ErrorBoundary';
 import { auth } from './src/services/firebase';
-
 
 import RunScreen from './src/screens/RunScreen';
 import TerritoriesScreen from './src/screens/TerritoriesScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import BugReportScreen from './src/screens/BugReportScreen';
 import { FloatingPillTabBar } from './src/components/FloatingPillTabBar';
 import { MinimalTabBar } from './src/components/MinimalTabBar';
 import { GlassTabBar } from './src/components/GlassTabBar';
@@ -51,6 +52,9 @@ const mapPreload =
     : require('./src/components/MapRunView.native');
 
 const Tab = createBottomTabNavigator();
+const RootStack = createStackNavigator();
+
+const SafeBugReport = withErrorBoundary(BugReportScreen, 'BugReport');
 
 // ─── Animated Splash Screen ───────────────────────────────────────────────────
 function SplashScreen({ onDone }: { onDone: () => void }) {
@@ -201,6 +205,17 @@ function MainTabs() {
   );
 }
 
+// ─── Root Navigator ───────────────────────────────────────────────────────────
+
+function RootNavigator() {
+  return (
+    <RootStack.Navigator screenOptions={{ headerShown: false }}>
+      <RootStack.Screen name="MainTabs" component={MainTabs} />
+      <RootStack.Screen name="GlobalBugReport" component={SafeBugReport} options={{ presentation: 'modal' }} />
+    </RootStack.Navigator>
+  );
+}
+
 // ─── Auth Gate ────────────────────────────────────────────────────────────────
 
 type AuthView = 'login' | 'signup' | 'forgot';
@@ -344,7 +359,7 @@ function AppContent() {
   if (!user) return <AuthStack />;
   if (!user.emailVerified) return <VerifyEmailScreen />;
 
-  return <MainTabs />;
+  return <RootNavigator />;
 }
 
 // ─── Root App ─────────────────────────────────────────────────────────────────

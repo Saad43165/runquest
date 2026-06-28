@@ -39,7 +39,7 @@ type RunAction =
   | { type: 'RESUME'; settings: Settings }
   | { type: 'STOP' }
   | { type: 'RESET' }
-  | { type: 'UPDATE_LOCATION'; point: LatLng; accuracy: number | null; heading: number | null; altitude: number | null }
+  | { type: 'UPDATE_LOCATION'; point: LatLng; accuracy: number | null; heading: number | null; altitude: number | null; speed: number | null }
   | { type: 'UPDATE_REGION'; region: Region }
   | { type: 'SET_CLOSED_LOOP'; closed: boolean }
   | { type: 'SET_SAVING'; isSaving: boolean };
@@ -128,6 +128,13 @@ function runReducer(state: RunStateInternal, action: RunAction): RunStateInterna
       if (action.accuracy !== null && action.accuracy > 25) {
         return { ...state, accuracyMeters: action.accuracy, headingDeg: action.heading, altitudeMeters: action.altitude ?? null };
       }
+
+      // Filter anomaly speed spikes (teleportation glitches)
+      // > 12 m/s (~43 km/h) is faster than Usain Bolt. If speed is this high, it's a GPS bounce.
+      if (action.speed !== null && action.speed > 12) {
+        return { ...state, accuracyMeters: action.accuracy, headingDeg: action.heading, altitudeMeters: action.altitude ?? null };
+      }
+
       // Deduplicate: skip point if < 8m from last recorded point
       // 8m threshold filters GPS jitter/drift while stationary (typical drift is 3-15m)
       if (state.path.length > 0) {
@@ -135,7 +142,13 @@ function runReducer(state: RunStateInternal, action: RunAction): RunStateInterna
         const dLat = (action.point.latitude - last.latitude) * 111000;
         const dLng = (action.point.longitude - last.longitude) * 111000 * Math.cos(last.latitude * Math.PI / 180);
         const dist = Math.sqrt(dLat * dLat + dLng * dLng);
-        if (dist < 8) return { ...state, accuracyMeters: action.accuracy, headingDeg: action.heading, altitudeMeters: action.altitude ?? null };
+        
+        // Dynamic jitter filter: if speed is very low (< 0.5 m/s) and dist is < 8m, it's jitter.
+        // If speed is high, we might legitimately move less than 8m between fast updates.
+        const isJitter = action.speed !== null && action.speed < 0.5 ? dist < 8 : dist < 4;
+        if (isJitter) {
+          return { ...state, accuracyMeters: action.accuracy, headingDeg: action.heading, altitudeMeters: action.altitude ?? null };
+        }
       }
       return {
         ...state,
@@ -384,6 +397,7 @@ export function useRunTracker(): Tracker {
         accuracy: 5,
         heading: (angle * 180) / Math.PI,
         altitude: 50,
+        speed: 2.5,
       });
 
       // Update region to follow the simulated run
@@ -465,9 +479,9 @@ export function useRunTracker(): Tracker {
         const isRunning = await Location.hasStartedLocationUpdatesAsync(BG_TASK).catch(() => false);
         if (!isRunning) {
           await Location.startLocationUpdatesAsync(BG_TASK, {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 10,
-            timeInterval: 5000,
+            accuracy: settings.locationAccuracy === 'High' ? Location.Accuracy.High : Location.Accuracy.Balanced,
+            distanceInterval: settings.distanceIntervalMeters,
+            timeInterval: settings.timeIntervalMs,
             showsBackgroundLocationIndicator: true,
             foregroundService: {
               notificationTitle: '🏃 RunQuest — Run Active',
@@ -488,6 +502,7 @@ export function useRunTracker(): Tracker {
             accuracy: loc.coords.accuracy ?? null,
             heading: loc.coords.heading ?? null,
             altitude: loc.coords.altitude ?? null,
+            speed: loc.coords.speed ?? null,
           });
         });
       }
@@ -514,6 +529,7 @@ export function useRunTracker(): Tracker {
             accuracy: loc.coords.accuracy ?? null,
             heading: loc.coords.heading ?? null,
             altitude: loc.coords.altitude ?? null,
+            speed: loc.coords.speed ?? null,
           });
 
           // Auto-pause: pass current speed (m/s) to scheduler
@@ -579,9 +595,9 @@ export function useRunTracker(): Tracker {
         const isRunning = await Location.hasStartedLocationUpdatesAsync(BG_TASK).catch(() => false);
         if (!isRunning) {
           await Location.startLocationUpdatesAsync(BG_TASK, {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 10,
-            timeInterval: 5000,
+            accuracy: settings.locationAccuracy === 'High' ? Location.Accuracy.High : Location.Accuracy.Balanced,
+            distanceInterval: settings.distanceIntervalMeters,
+            timeInterval: settings.timeIntervalMs,
             showsBackgroundLocationIndicator: true,
             foregroundService: {
               notificationTitle: 'RunQuest — Run Active',
@@ -599,6 +615,7 @@ export function useRunTracker(): Tracker {
             accuracy: loc.coords.accuracy ?? null,
             heading: loc.coords.heading ?? null,
             altitude: loc.coords.altitude ?? null,
+            speed: loc.coords.speed ?? null,
           });
         });
       }
@@ -620,6 +637,7 @@ export function useRunTracker(): Tracker {
             accuracy: loc.coords.accuracy ?? null,
             heading: loc.coords.heading ?? null,
             altitude: loc.coords.altitude ?? null,
+            speed: loc.coords.speed ?? null,
           });
           scheduleAutoPause(loc.coords.speed ?? 0);
           dispatch({

@@ -10,22 +10,30 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '@/utils/ThemeContext';
 import { OrbBackground } from '../components/OrbBackground';
 import * as Haptics from 'expo-haptics';
+import { useAuth } from '@/context/AuthContext';
+import { usePremium } from '@/context/PremiumContext';
 
 const FORMSPREE_ENDPOINT = 'https://formspree.io/f/mwvaenop';
 
 async function submitReport(params: {
-  bugType: string; severity: string; description: string; steps: string;
+  email: string; bugType: string; severity: string; description: string; steps: string;
+  uid?: string; platform: string; osVersion: string; isPremium: boolean;
 }): Promise<void> {
   const res = await fetch(FORMSPREE_ENDPOINT, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
+      email: params.email || 'No email provided',
       _subject: `[RunQuest Bug] ${params.bugType} — ${params.severity}`,
       bug_type: params.bugType,
       severity: params.severity,
       description: params.description,
       steps: params.steps || 'Not provided',
       app_version: '1.0.4',
+      user_id: params.uid || 'Anonymous',
+      platform: params.platform,
+      os_version: params.osVersion,
+      is_premium: params.isPremium,
     }),
   });
   if (!res.ok) {
@@ -55,7 +63,10 @@ export default function BugReportScreen() {
   const { T } = useTheme();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
+  const { user } = useAuth();
+  const { isPremium } = usePremium();
 
+  const [email, setEmail] = useState(user?.email || '');
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [severity, setSeverity] = useState('medium');
   const [description, setDescription] = useState('');
@@ -80,7 +91,17 @@ export default function BugReportScreen() {
     const typeLabels = selectedTypes.map(id => BUG_TYPES.find(b => b.id === id)?.label ?? id).join(', ');
     const severityLabel = SEVERITY.find(s => s.id === severity)?.label ?? severity;
     try {
-      await submitReport({ bugType: typeLabels, severity: severityLabel, description: description.trim(), steps: steps.trim() });
+      await submitReport({ 
+        email: email.trim(),
+        bugType: typeLabels, 
+        severity: severityLabel, 
+        description: description.trim(), 
+        steps: steps.trim(),
+        uid: user?.uid,
+        platform: Platform.OS,
+        osVersion: String(Platform.Version),
+        isPremium
+      });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSubmitted(true);
       Animated.spring(successAnim, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }).start();
@@ -221,10 +242,27 @@ export default function BugReportScreen() {
               </View>
             </View>
 
+            {/* Contact Email */}
+            <View>
+              <Text style={[styles.label, { color: T.white }]}>STEP 3 — CONTACT EMAIL <Text style={{ color: T.text, fontWeight: '500', letterSpacing: 0 }}>(optional)</Text></Text>
+              <Text style={{ color: T.text, fontSize: 12, marginBottom: 10 }}>So we can follow up if we need more details</Text>
+              <View style={[styles.textArea, { backgroundColor: T.card, borderColor: T.border, padding: 0 }]}>
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  style={{ color: T.white, fontSize: 14, padding: 14 }}
+                  placeholder="your@email.com"
+                  placeholderTextColor={T.text}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
             {/* Description */}
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[styles.label, { color: T.white }]}>STEP 3 — DESCRIBE THE ISSUE <Text style={{ color: T.red }}>*</Text></Text>
+                <Text style={[styles.label, { color: T.white }]}>STEP 4 — DESCRIBE THE ISSUE <Text style={{ color: T.red }}>*</Text></Text>
                 {description.trim().length === 0
                   ? <Text style={{ color: T.red, fontSize: 11, fontWeight: '600' }}>Required</Text>
                   : description.trim().length < 10
@@ -250,7 +288,7 @@ export default function BugReportScreen() {
 
             {/* Steps */}
             <View>
-              <Text style={[styles.label, { color: T.white }]}>STEP 4 — STEPS TO REPRODUCE <Text style={{ color: T.text, fontWeight: '500', letterSpacing: 0 }}>(optional but helpful)</Text></Text>
+              <Text style={[styles.label, { color: T.white }]}>STEP 5 — STEPS TO REPRODUCE <Text style={{ color: T.text, fontWeight: '500', letterSpacing: 0 }}>(optional but helpful)</Text></Text>
               <Text style={{ color: T.text, fontSize: 12, marginBottom: 10 }}>e.g. "1. Open Run screen 2. Tap Start 3. App crashes"</Text>
               <View style={[styles.textArea, { backgroundColor: T.card, borderColor: stepsFocused ? T.green : T.border }]}>
                 <TextInput

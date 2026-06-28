@@ -225,7 +225,7 @@ export default function HelpSupportScreen() {
                 sub: 'Submit a detailed bug report',
                 iconBg: '#FF453A30',
                 iconColor: '#FF453A',
-                onPress: () => navigation.navigate('BugReport'),
+                onPress: () => navigation.navigate('GlobalBugReport'),
               },
               {
                 icon: 'person-outline',
